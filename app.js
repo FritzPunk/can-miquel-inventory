@@ -1,51 +1,65 @@
 // ===== Can Miquel Inventory Management System =====
+// ===== WITH FIREBASE REAL-TIME DATABASE =====
+
+// ===== Firebase Configuration =====
+const firebaseConfig = {
+    apiKey: "AIzaSyCSKhRmynciH_8Vr4gDPg4kXU-FoQqDHKo",
+    authDomain: "can-miquel-inventory.firebaseapp.com",
+    databaseURL: "https://can-miquel-inventory-default-rtdb.firebaseio.com",
+    projectId: "can-miquel-inventory",
+    storageBucket: "can-miquel-inventory.firebasestorage.app",
+    messagingSenderId: "912925324878",
+    appId: "1:912925324878:web:a9ce48b224e67688c4351f"
+};
+
+// Initialize Firebase
+let database = null;
+let firebaseReady = false;
+
+function initFirebase() {
+    try {
+        if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            database = firebase.database();
+            firebaseReady = true;
+            console.log('Firebase connected!');
+            return true;
+        }
+    } catch (error) {
+        console.error('Firebase init error:', error);
+    }
+    return false;
+}
 
 // ===== Translations =====
 const translations = {
     en: {
-        // Header
         export: 'Export',
         import: 'Import',
-        
-        // Sidebar
         families: 'Families',
         items: 'items',
         item: 'item',
-        
-        // Main Panel
         selectFamily: 'Select a Family',
         addItem: 'Add Item',
         searchPlaceholder: 'Search items...',
-        
-        // Table Headers
         itemName: 'Item Name',
         quantity: 'Quantity',
         unit: 'Unit',
         minStock: 'Min. Stock',
         status: 'Status',
         actions: 'Actions',
-        
-        // Status
         inStock: 'In Stock',
         lowStock: 'Low Stock',
         outOfStock: 'Out of Stock',
-        
-        // Empty State
         emptyState: 'No items yet. Select a family and add your first item!',
-        
-        // Footer
         lastSaved: 'Last saved',
         never: 'Never',
-        
-        // Family Modal
         addFamily: 'Add Family',
         editFamily: 'Edit Family',
         familyName: 'Family Name',
         familyNamePlaceholder: 'e.g., Beverages, Meats, Vegetables...',
         iconEmoji: 'Icon (emoji)',
         saveFamily: 'Save Family',
-        
-        // Item Modal
         editItem: 'Edit Item',
         itemNameLabel: 'Item Name',
         itemNamePlaceholder: 'e.g., Olive Oil, Chicken Breast...',
@@ -53,8 +67,6 @@ const translations = {
         notesLabel: 'Notes (optional)',
         notesPlaceholder: 'Any additional notes...',
         saveItem: 'Save Item',
-        
-        // Units
         unitUnits: 'Units',
         unitKg: 'Kilograms (kg)',
         unitG: 'Grams (g)',
@@ -63,8 +75,6 @@ const translations = {
         unitBottles: 'Bottles',
         unitBoxes: 'Boxes',
         unitPacks: 'Packs',
-        
-        // Delete Modal
         confirmDelete: 'Confirm Delete',
         deleteConfirmItem: 'Are you sure you want to delete this item?',
         deleteConfirmFamily: 'Are you sure you want to delete',
@@ -72,8 +82,6 @@ const translations = {
         deleteConfirmFamilyItemsIn: 'in this family.',
         cancel: 'Cancel',
         delete: 'Delete',
-        
-        // Alerts
         enterFamilyName: 'Please enter a family name.',
         enterItemName: 'Please enter an item name.',
         importConfirm: 'This will replace your current inventory with:',
@@ -82,59 +90,43 @@ const translations = {
         importContinue: 'Continue?',
         importSuccess: 'Data imported successfully!',
         importError: 'Error importing data. Please make sure the file is a valid inventory export.',
-        
-        // Default families
         defaultBeverages: 'Beverages',
         defaultMeats: 'Meats',
         defaultVegetables: 'Vegetables',
         defaultDairy: 'Dairy',
         defaultPantry: 'Pantry',
-        defaultSeafood: 'Seafood'
+        defaultSeafood: 'Seafood',
+        connecting: 'Connecting...',
+        connected: 'Connected',
+        offline: 'Offline Mode'
     },
     es: {
-        // Header
         export: 'Exportar',
         import: 'Importar',
-        
-        // Sidebar
         families: 'Familias',
         items: 'artículos',
         item: 'artículo',
-        
-        // Main Panel
         selectFamily: 'Selecciona una Familia',
         addItem: 'Añadir Artículo',
         searchPlaceholder: 'Buscar artículos...',
-        
-        // Table Headers
         itemName: 'Nombre',
         quantity: 'Cantidad',
         unit: 'Unidad',
         minStock: 'Stock Mín.',
         status: 'Estado',
         actions: 'Acciones',
-        
-        // Status
         inStock: 'En Stock',
         lowStock: 'Stock Bajo',
         outOfStock: 'Agotado',
-        
-        // Empty State
         emptyState: 'Sin artículos. ¡Selecciona una familia y añade tu primer artículo!',
-        
-        // Footer
         lastSaved: 'Guardado',
         never: 'Nunca',
-        
-        // Family Modal
         addFamily: 'Añadir Familia',
         editFamily: 'Editar Familia',
         familyName: 'Nombre de Familia',
         familyNamePlaceholder: 'ej., Bebidas, Carnes, Verduras...',
         iconEmoji: 'Icono (emoji)',
         saveFamily: 'Guardar Familia',
-        
-        // Item Modal
         editItem: 'Editar Artículo',
         itemNameLabel: 'Nombre del Artículo',
         itemNamePlaceholder: 'ej., Aceite de Oliva, Pechuga de Pollo...',
@@ -142,8 +134,6 @@ const translations = {
         notesLabel: 'Notas (opcional)',
         notesPlaceholder: 'Notas adicionales...',
         saveItem: 'Guardar Artículo',
-        
-        // Units
         unitUnits: 'Unidades',
         unitKg: 'Kilogramos (kg)',
         unitG: 'Gramos (g)',
@@ -152,8 +142,6 @@ const translations = {
         unitBottles: 'Botellas',
         unitBoxes: 'Cajas',
         unitPacks: 'Paquetes',
-        
-        // Delete Modal
         confirmDelete: 'Confirmar Eliminación',
         deleteConfirmItem: '¿Estás seguro de que quieres eliminar este artículo?',
         deleteConfirmFamily: '¿Estás seguro de que quieres eliminar',
@@ -161,8 +149,6 @@ const translations = {
         deleteConfirmFamilyItemsIn: 'en esta familia.',
         cancel: 'Cancelar',
         delete: 'Eliminar',
-        
-        // Alerts
         enterFamilyName: 'Por favor, introduce un nombre de familia.',
         enterItemName: 'Por favor, introduce un nombre de artículo.',
         importConfirm: 'Esto reemplazará tu inventario actual con:',
@@ -171,14 +157,15 @@ const translations = {
         importContinue: '¿Continuar?',
         importSuccess: '¡Datos importados correctamente!',
         importError: 'Error al importar datos. Asegúrate de que el archivo es una exportación válida.',
-        
-        // Default families
         defaultBeverages: 'Bebidas',
         defaultMeats: 'Carnes',
         defaultVegetables: 'Verduras',
         defaultDairy: 'Lácteos',
         defaultPantry: 'Despensa',
-        defaultSeafood: 'Mariscos'
+        defaultSeafood: 'Mariscos',
+        connecting: 'Conectando...',
+        connected: 'Conectado',
+        offline: 'Modo Offline'
     }
 };
 
@@ -251,7 +238,6 @@ function t(key) {
 }
 
 function applyTranslations() {
-    // Update all elements with data-i18n attribute
     document.querySelectorAll('[data-i18n]').forEach(el => {
         const key = el.getAttribute('data-i18n');
         if (translations[currentLang][key]) {
@@ -259,7 +245,6 @@ function applyTranslations() {
         }
     });
     
-    // Update all placeholders with data-i18n-placeholder attribute
     document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
         const key = el.getAttribute('data-i18n-placeholder');
         if (translations[currentLang][key]) {
@@ -267,7 +252,6 @@ function applyTranslations() {
         }
     });
     
-    // Update language toggle button
     if (currentLang === 'en') {
         langFlag.textContent = '🇬🇧';
         langCode.textContent = 'EN';
@@ -281,13 +265,10 @@ function toggleLanguage() {
     currentLang = currentLang === 'en' ? 'es' : 'en';
     localStorage.setItem('canMiquelLang', currentLang);
     applyTranslations();
-    
-    // Re-render dynamic content
     renderFamilies();
     renderItems();
     updateItemCount();
     
-    // Update current family name if selected
     if (currentFamilyId) {
         const family = inventoryData.families.find(f => f.id === currentFamilyId);
         if (family) {
@@ -307,48 +288,120 @@ function loadLanguage() {
     applyTranslations();
 }
 
-// ===== Local Storage Functions =====
+// ===== Database Functions =====
 const STORAGE_KEY = 'canMiquelInventory';
 
 function saveData() {
+    // Save to Firebase if available
+    if (firebaseReady && database) {
+        database.ref('inventory').set(inventoryData)
+            .then(() => {
+                updateLastSaved();
+                console.log('Saved to Firebase');
+            })
+            .catch((error) => {
+                console.error('Firebase save error:', error);
+                // Fallback to localStorage
+                saveToLocalStorage();
+            });
+    } else {
+        // Fallback to localStorage
+        saveToLocalStorage();
+    }
+}
+
+function saveToLocalStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(inventoryData));
         updateLastSaved();
     } catch (error) {
         console.error('Error saving data:', error);
-        alert('Error saving data. Please check your browser storage settings.');
     }
 }
 
 function loadData() {
+    // Try Firebase first
+    if (firebaseReady && database) {
+        lastSavedSpan.textContent = t('connecting');
+        
+        // Listen for real-time updates
+        database.ref('inventory').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data && data.families) {
+                inventoryData = data;
+                // Ensure arrays exist
+                if (!inventoryData.families) inventoryData.families = [];
+                if (!inventoryData.items) inventoryData.items = [];
+            } else {
+                // Initialize with defaults if database is empty
+                initializeDefaultData();
+                saveData();
+            }
+            
+            renderFamilies();
+            renderItems();
+            updateItemCount();
+            updateLastSaved();
+            
+            // Re-select current family if it exists
+            if (currentFamilyId) {
+                const family = inventoryData.families.find(f => f.id === currentFamilyId);
+                if (family) {
+                    selectFamily(currentFamilyId);
+                } else if (inventoryData.families.length > 0) {
+                    selectFamily(inventoryData.families[0].id);
+                }
+            } else if (inventoryData.families.length > 0) {
+                selectFamily(inventoryData.families[0].id);
+            }
+        }, (error) => {
+            console.error('Firebase read error:', error);
+            loadFromLocalStorage();
+        });
+    } else {
+        loadFromLocalStorage();
+    }
+}
+
+function loadFromLocalStorage() {
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             inventoryData = JSON.parse(saved);
-            // Migrate old data: convert hardcoded English names to translation keys
             migrateDefaultFamilies();
         } else {
-            // Initialize with default families for a restaurant
-            inventoryData = {
-                families: [
-                    { id: generateId(), nameKey: 'defaultBeverages', icon: '🍷' },
-                    { id: generateId(), nameKey: 'defaultMeats', icon: '🥩' },
-                    { id: generateId(), nameKey: 'defaultVegetables', icon: '🥬' },
-                    { id: generateId(), nameKey: 'defaultDairy', icon: '🧀' },
-                    { id: generateId(), nameKey: 'defaultPantry', icon: '🫒' },
-                    { id: generateId(), nameKey: 'defaultSeafood', icon: '🦐' }
-                ],
-                items: []
-            };
-            saveData();
+            initializeDefaultData();
+            saveToLocalStorage();
         }
+        
+        renderFamilies();
+        renderItems();
+        
+        if (inventoryData.families.length > 0) {
+            selectFamily(inventoryData.families[0].id);
+        }
+        
+        lastSavedSpan.textContent = t('offline');
     } catch (error) {
         console.error('Error loading data:', error);
         inventoryData = { families: [], items: [] };
     }
 }
 
-// Migrate old default families with hardcoded names to use translation keys
+function initializeDefaultData() {
+    inventoryData = {
+        families: [
+            { id: generateId(), nameKey: 'defaultBeverages', icon: '🍷' },
+            { id: generateId(), nameKey: 'defaultMeats', icon: '🥩' },
+            { id: generateId(), nameKey: 'defaultVegetables', icon: '🥬' },
+            { id: generateId(), nameKey: 'defaultDairy', icon: '🧀' },
+            { id: generateId(), nameKey: 'defaultPantry', icon: '🫒' },
+            { id: generateId(), nameKey: 'defaultSeafood', icon: '🦐' }
+        ],
+        items: []
+    };
+}
+
 function migrateDefaultFamilies() {
     const defaultMappings = {
         'Beverages': 'defaultBeverages',
@@ -373,7 +426,6 @@ function migrateDefaultFamilies() {
     }
 }
 
-// Get family display name (translated if it's a default family)
 function getFamilyName(family) {
     if (family.nameKey && translations[currentLang][family.nameKey]) {
         return translations[currentLang][family.nameKey];
@@ -389,7 +441,8 @@ function updateLastSaved() {
         day: '2-digit',
         month: 'short'
     };
-    lastSavedSpan.textContent = now.toLocaleDateString('en-GB', options);
+    const timeStr = now.toLocaleDateString('en-GB', options);
+    lastSavedSpan.textContent = firebaseReady ? `✓ ${timeStr}` : timeStr;
 }
 
 // ===== Utility Functions =====
@@ -454,7 +507,6 @@ function renderFamilies() {
         familyNav.appendChild(familyEl);
     });
     
-    // Add event listeners for edit/delete buttons
     document.querySelectorAll('.family-action-btn.edit').forEach(btn => {
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -480,7 +532,6 @@ function renderItems() {
     
     let items = getItemsForFamily(currentFamilyId);
     
-    // Apply search filter
     const searchTerm = searchInput.value.toLowerCase().trim();
     if (searchTerm) {
         items = items.filter(item => 
@@ -523,7 +574,6 @@ function renderItems() {
         inventoryBody.appendChild(row);
     });
     
-    // Add event listeners
     document.querySelectorAll('.action-btn.edit').forEach(btn => {
         btn.addEventListener('click', () => openEditItemModal(btn.dataset.id));
     });
@@ -643,16 +693,13 @@ function saveFamily() {
     }
     
     if (editingFamilyId) {
-        // Update existing
         const family = inventoryData.families.find(f => f.id === editingFamilyId);
         if (family) {
-            // If editing, convert to custom name (remove translation key)
             delete family.nameKey;
             family.name = name;
             family.icon = icon;
         }
     } else {
-        // Create new
         inventoryData.families.push({
             id: generateId(),
             name,
@@ -664,7 +711,6 @@ function saveFamily() {
     closeModal(familyModal);
     renderFamilies();
     
-    // Update header if current family was edited
     if (editingFamilyId === currentFamilyId) {
         const family = inventoryData.families.find(f => f.id === currentFamilyId);
         if (family) {
@@ -686,7 +732,6 @@ function saveItem() {
     }
     
     if (editingItemId) {
-        // Update existing
         const item = inventoryData.items.find(i => i.id === editingItemId);
         if (item) {
             item.name = name;
@@ -696,7 +741,6 @@ function saveItem() {
             item.notes = notes;
         }
     } else {
-        // Create new
         inventoryData.items.push({
             id: generateId(),
             familyId: currentFamilyId,
@@ -712,19 +756,16 @@ function saveItem() {
     closeModal(itemModal);
     renderItems();
     updateItemCount();
-    renderFamilies(); // Update item count in sidebar
+    renderFamilies();
 }
 
 function confirmDelete() {
     if (!deleteTarget) return;
     
     if (deleteTarget.type === 'family') {
-        // Remove all items in this family
         inventoryData.items = inventoryData.items.filter(item => item.familyId !== deleteTarget.id);
-        // Remove the family
         inventoryData.families = inventoryData.families.filter(f => f.id !== deleteTarget.id);
         
-        // Reset current selection if deleted
         if (currentFamilyId === deleteTarget.id) {
             currentFamilyId = null;
             currentFamilyName.textContent = t('selectFamily');
@@ -732,7 +773,6 @@ function confirmDelete() {
             addItemBtn.disabled = true;
         }
     } else {
-        // Remove the item
         inventoryData.items = inventoryData.items.filter(i => i.id !== deleteTarget.id);
     }
     
@@ -769,13 +809,11 @@ function importData(file) {
         try {
             const data = JSON.parse(e.target.result);
             
-            // Validate structure
             if (!data.families || !Array.isArray(data.families) || 
                 !data.items || !Array.isArray(data.items)) {
                 throw new Error('Invalid data format');
             }
             
-            // Confirm import
             const confirmImport = confirm(
                 `${t('importConfirm')}\n\n` +
                 `• ${data.families.length} ${t('importFamilies')}\n` +
@@ -818,7 +856,6 @@ function formatNumber(num) {
 }
 
 // ===== Event Listeners =====
-// Family Modal
 addFamilyBtn.addEventListener('click', openAddFamilyModal);
 closeFamilyModal.addEventListener('click', () => closeModal(familyModal));
 cancelFamilyBtn.addEventListener('click', () => closeModal(familyModal));
@@ -827,7 +864,6 @@ familyForm.addEventListener('submit', (e) => {
     saveFamily();
 });
 
-// Item Modal
 addItemBtn.addEventListener('click', openAddItemModal);
 closeItemModal.addEventListener('click', () => closeModal(itemModal));
 cancelItemBtn.addEventListener('click', () => closeModal(itemModal));
@@ -836,12 +872,10 @@ itemForm.addEventListener('submit', (e) => {
     saveItem();
 });
 
-// Delete Modal
 closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
 cancelDeleteBtn.addEventListener('click', () => closeModal(deleteModal));
 confirmDeleteBtn.addEventListener('click', confirmDelete);
 
-// Close modals on overlay click
 [familyModal, itemModal, deleteModal].forEach(modal => {
     modal.addEventListener('click', (e) => {
         if (e.target === modal) {
@@ -850,7 +884,6 @@ confirmDeleteBtn.addEventListener('click', confirmDelete);
     });
 });
 
-// Close modals on Escape key
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         [familyModal, itemModal, deleteModal].forEach(modal => {
@@ -861,32 +894,22 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Search
 searchInput.addEventListener('input', renderItems);
 
-// Export/Import
 exportBtn.addEventListener('click', exportData);
 importBtn.addEventListener('click', () => importFile.click());
 importFile.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
         importData(e.target.files[0]);
-        e.target.value = ''; // Reset input
+        e.target.value = '';
     }
 });
 
-// Language toggle event
 langToggle.addEventListener('click', toggleLanguage);
 
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', () => {
     loadLanguage();
+    initFirebase();
     loadData();
-    renderFamilies();
-    renderItems();
-    
-    // Auto-select first family if available
-    if (inventoryData.families.length > 0) {
-        selectFamily(inventoryData.families[0].id);
-    }
 });
-
