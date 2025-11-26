@@ -1,0 +1,19 @@
+{
+    "name": "Can Miquel Inventory",
+    "short_name": "Can Miquel",
+    "description": "Restaurant Inventory Management System - Gestión de Inventario de Restaurante",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#1a1614",
+    "theme_color": "#c9a86c",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any"
+        }
+    ]
+}
+
