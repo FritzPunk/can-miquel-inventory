@@ -924,6 +924,15 @@ langToggle.addEventListener('click', toggleLanguage);
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', () => {
     loadLanguage();
-    initFirebase();
-    loadData();
+    
+    // Check if Firebase SDK loaded
+    if (typeof firebase === 'undefined') {
+        console.error('Firebase SDK not loaded!');
+        lastSavedSpan.textContent = 'Offline Mode';
+        loadFromLocalStorage();
+    } else {
+        console.log('Firebase SDK loaded, initializing...');
+        initFirebase();
+        loadData();
+    }
 });
