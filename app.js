@@ -18,15 +18,29 @@ let firebaseReady = false;
 
 function initFirebase() {
     try {
-        if (typeof firebase !== 'undefined' && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+        if (typeof firebase !== 'undefined') {
             firebase.initializeApp(firebaseConfig);
             database = firebase.database();
             firebaseReady = true;
-            console.log('Firebase connected!');
+            
+            // Test connection
+            database.ref('.info/connected').on('value', (snapshot) => {
+                if (snapshot.val() === true) {
+                    console.log('✅ Firebase connected!');
+                    lastSavedSpan.textContent = '✓ ' + t('connected');
+                } else {
+                    console.log('❌ Firebase disconnected');
+                    lastSavedSpan.textContent = t('offline');
+                }
+            });
+            
             return true;
+        } else {
+            console.error('Firebase SDK not loaded');
         }
     } catch (error) {
         console.error('Firebase init error:', error);
+        alert('Firebase error: ' + error.message);
     }
     return false;
 }
