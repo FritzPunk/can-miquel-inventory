@@ -16,35 +16,6 @@ const firebaseConfig = {
 let database = null;
 let firebaseReady = false;
 
-function initFirebase() {
-    try {
-        if (typeof firebase !== 'undefined') {
-            firebase.initializeApp(firebaseConfig);
-            database = firebase.database();
-            firebaseReady = true;
-            
-            // Test connection
-            database.ref('.info/connected').on('value', (snapshot) => {
-                if (snapshot.val() === true) {
-                    console.log('✅ Firebase connected!');
-                    lastSavedSpan.textContent = '✓ ' + t('connected');
-                } else {
-                    console.log('❌ Firebase disconnected');
-                    lastSavedSpan.textContent = t('offline');
-                }
-            });
-            
-            return true;
-        } else {
-            console.error('Firebase SDK not loaded');
-        }
-    } catch (error) {
-        console.error('Firebase init error:', error);
-        alert('Firebase error: ' + error.message);
-    }
-    return false;
-}
-
 // ===== Translations =====
 const translations = {
     en: {
@@ -196,55 +167,56 @@ let editingFamilyId = null;
 let editingItemId = null;
 let deleteTarget = null;
 
-// DOM Elements
-const familyNav = document.getElementById('familyNav');
-const inventoryBody = document.getElementById('inventoryBody');
-const currentFamilyName = document.getElementById('currentFamilyName');
-const itemCount = document.getElementById('itemCount');
-const addItemBtn = document.getElementById('addItemBtn');
-const searchInput = document.getElementById('searchInput');
-const emptyState = document.getElementById('emptyState');
-const inventoryTable = document.getElementById('inventoryTable');
-const lastSavedSpan = document.getElementById('lastSaved');
+// DOM Elements - will be initialized after DOM loads
+let familyNav, inventoryBody, currentFamilyName, itemCount, addItemBtn;
+let searchInput, emptyState, inventoryTable, lastSavedSpan;
+let familyModal, familyModalTitle, familyForm, familyNameInput, familyIconInput;
+let addFamilyBtn, closeFamilyModal, cancelFamilyBtn;
+let itemModal, itemModalTitle, itemForm, itemNameInput, itemQuantityInput;
+let itemUnitInput, itemMinStockInput, itemNotesInput, closeItemModal, cancelItemBtn;
+let deleteModal, deleteMessage, closeDeleteModal, cancelDeleteBtn, confirmDeleteBtn;
+let exportBtn, importBtn, importFile, langToggle, langFlag, langCode;
 
-// Family Modal
-const familyModal = document.getElementById('familyModal');
-const familyModalTitle = document.getElementById('familyModalTitle');
-const familyForm = document.getElementById('familyForm');
-const familyNameInput = document.getElementById('familyName');
-const familyIconInput = document.getElementById('familyIcon');
-const addFamilyBtn = document.getElementById('addFamilyBtn');
-const closeFamilyModal = document.getElementById('closeFamilyModal');
-const cancelFamilyBtn = document.getElementById('cancelFamilyBtn');
-
-// Item Modal
-const itemModal = document.getElementById('itemModal');
-const itemModalTitle = document.getElementById('itemModalTitle');
-const itemForm = document.getElementById('itemForm');
-const itemNameInput = document.getElementById('itemName');
-const itemQuantityInput = document.getElementById('itemQuantity');
-const itemUnitInput = document.getElementById('itemUnit');
-const itemMinStockInput = document.getElementById('itemMinStock');
-const itemNotesInput = document.getElementById('itemNotes');
-const closeItemModal = document.getElementById('closeItemModal');
-const cancelItemBtn = document.getElementById('cancelItemBtn');
-
-// Delete Modal
-const deleteModal = document.getElementById('deleteModal');
-const deleteMessage = document.getElementById('deleteMessage');
-const closeDeleteModal = document.getElementById('closeDeleteModal');
-const cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
-const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
-
-// Export/Import
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const importFile = document.getElementById('importFile');
-
-// Language Toggle
-const langToggle = document.getElementById('langToggle');
-const langFlag = document.getElementById('langFlag');
-const langCode = document.getElementById('langCode');
+function initDOMElements() {
+    familyNav = document.getElementById('familyNav');
+    inventoryBody = document.getElementById('inventoryBody');
+    currentFamilyName = document.getElementById('currentFamilyName');
+    itemCount = document.getElementById('itemCount');
+    addItemBtn = document.getElementById('addItemBtn');
+    searchInput = document.getElementById('searchInput');
+    emptyState = document.getElementById('emptyState');
+    inventoryTable = document.getElementById('inventoryTable');
+    lastSavedSpan = document.getElementById('lastSaved');
+    familyModal = document.getElementById('familyModal');
+    familyModalTitle = document.getElementById('familyModalTitle');
+    familyForm = document.getElementById('familyForm');
+    familyNameInput = document.getElementById('familyName');
+    familyIconInput = document.getElementById('familyIcon');
+    addFamilyBtn = document.getElementById('addFamilyBtn');
+    closeFamilyModal = document.getElementById('closeFamilyModal');
+    cancelFamilyBtn = document.getElementById('cancelFamilyBtn');
+    itemModal = document.getElementById('itemModal');
+    itemModalTitle = document.getElementById('itemModalTitle');
+    itemForm = document.getElementById('itemForm');
+    itemNameInput = document.getElementById('itemName');
+    itemQuantityInput = document.getElementById('itemQuantity');
+    itemUnitInput = document.getElementById('itemUnit');
+    itemMinStockInput = document.getElementById('itemMinStock');
+    itemNotesInput = document.getElementById('itemNotes');
+    closeItemModal = document.getElementById('closeItemModal');
+    cancelItemBtn = document.getElementById('cancelItemBtn');
+    deleteModal = document.getElementById('deleteModal');
+    deleteMessage = document.getElementById('deleteMessage');
+    closeDeleteModal = document.getElementById('closeDeleteModal');
+    cancelDeleteBtn = document.getElementById('cancelDeleteBtn');
+    confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    exportBtn = document.getElementById('exportBtn');
+    importBtn = document.getElementById('importBtn');
+    importFile = document.getElementById('importFile');
+    langToggle = document.getElementById('langToggle');
+    langFlag = document.getElementById('langFlag');
+    langCode = document.getElementById('langCode');
+}
 
 // ===== Translation Functions =====
 function t(key) {
@@ -266,12 +238,14 @@ function applyTranslations() {
         }
     });
     
-    if (currentLang === 'en') {
-        langFlag.textContent = '🇬🇧';
-        langCode.textContent = 'EN';
-    } else {
-        langFlag.textContent = '🇪🇸';
-        langCode.textContent = 'ES';
+    if (langFlag && langCode) {
+        if (currentLang === 'en') {
+            langFlag.textContent = '🇬🇧';
+            langCode.textContent = 'EN';
+        } else {
+            langFlag.textContent = '🇪🇸';
+            langCode.textContent = 'ES';
+        }
     }
 }
 
@@ -302,24 +276,54 @@ function loadLanguage() {
     applyTranslations();
 }
 
+// ===== Firebase Functions =====
+function initFirebase() {
+    if (typeof firebase === 'undefined') {
+        console.error('❌ Firebase SDK not loaded');
+        return false;
+    }
+    
+    try {
+        firebase.initializeApp(firebaseConfig);
+        database = firebase.database();
+        firebaseReady = true;
+        console.log('✅ Firebase initialized');
+        return true;
+    } catch (error) {
+        console.error('❌ Firebase init error:', error);
+        return false;
+    }
+}
+
 // ===== Database Functions =====
 const STORAGE_KEY = 'canMiquelInventory';
 
 function saveData() {
-    // Save to Firebase if available
     if (firebaseReady && database) {
-        database.ref('inventory').set(inventoryData)
+        // Convert arrays to objects for Firebase (Firebase doesn't handle empty arrays well)
+        const dataToSave = {
+            families: {},
+            items: {}
+        };
+        
+        inventoryData.families.forEach((family, index) => {
+            dataToSave.families[family.id] = family;
+        });
+        
+        inventoryData.items.forEach((item, index) => {
+            dataToSave.items[item.id] = item;
+        });
+        
+        database.ref('inventory').set(dataToSave)
             .then(() => {
+                console.log('✅ Saved to Firebase');
                 updateLastSaved();
-                console.log('Saved to Firebase');
             })
             .catch((error) => {
-                console.error('Firebase save error:', error);
-                // Fallback to localStorage
+                console.error('❌ Firebase save error:', error);
                 saveToLocalStorage();
             });
     } else {
-        // Fallback to localStorage
         saveToLocalStorage();
     }
 }
@@ -329,25 +333,26 @@ function saveToLocalStorage() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(inventoryData));
         updateLastSaved();
     } catch (error) {
-        console.error('Error saving data:', error);
+        console.error('Error saving to localStorage:', error);
     }
 }
 
 function loadData() {
-    // Try Firebase first
     if (firebaseReady && database) {
-        lastSavedSpan.textContent = t('connecting');
+        if (lastSavedSpan) lastSavedSpan.textContent = t('connecting');
         
         // Listen for real-time updates
         database.ref('inventory').on('value', (snapshot) => {
+            console.log('📥 Data received from Firebase');
             const data = snapshot.val();
-            if (data && data.families) {
-                inventoryData = data;
-                // Ensure arrays exist
-                if (!inventoryData.families) inventoryData.families = [];
-                if (!inventoryData.items) inventoryData.items = [];
+            
+            if (data) {
+                // Convert Firebase objects back to arrays
+                inventoryData.families = data.families ? Object.values(data.families) : [];
+                inventoryData.items = data.items ? Object.values(data.items) : [];
             } else {
-                // Initialize with defaults if database is empty
+                // Database is empty, initialize with defaults
+                console.log('📝 Database empty, initializing...');
                 initializeDefaultData();
                 saveData();
             }
@@ -355,21 +360,21 @@ function loadData() {
             renderFamilies();
             renderItems();
             updateItemCount();
-            updateLastSaved();
+            if (lastSavedSpan) lastSavedSpan.textContent = '✓ ' + t('connected');
             
-            // Re-select current family if it exists
-            if (currentFamilyId) {
+            // Select first family if none selected
+            if (!currentFamilyId && inventoryData.families.length > 0) {
+                selectFamily(inventoryData.families[0].id);
+            } else if (currentFamilyId) {
+                // Re-render current selection
                 const family = inventoryData.families.find(f => f.id === currentFamilyId);
                 if (family) {
-                    selectFamily(currentFamilyId);
-                } else if (inventoryData.families.length > 0) {
-                    selectFamily(inventoryData.families[0].id);
+                    currentFamilyName.textContent = `${family.icon || '📦'} ${getFamilyName(family)}`;
+                    updateItemCount();
                 }
-            } else if (inventoryData.families.length > 0) {
-                selectFamily(inventoryData.families[0].id);
             }
         }, (error) => {
-            console.error('Firebase read error:', error);
+            console.error('❌ Firebase read error:', error);
             loadFromLocalStorage();
         });
     } else {
@@ -378,6 +383,7 @@ function loadData() {
 }
 
 function loadFromLocalStorage() {
+    console.log('📂 Loading from localStorage');
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
@@ -395,9 +401,9 @@ function loadFromLocalStorage() {
             selectFamily(inventoryData.families[0].id);
         }
         
-        lastSavedSpan.textContent = t('offline');
+        if (lastSavedSpan) lastSavedSpan.textContent = t('offline');
     } catch (error) {
-        console.error('Error loading data:', error);
+        console.error('Error loading from localStorage:', error);
         inventoryData = { families: [], items: [] };
     }
 }
@@ -448,13 +454,9 @@ function getFamilyName(family) {
 }
 
 function updateLastSaved() {
+    if (!lastSavedSpan) return;
     const now = new Date();
-    const options = { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        day: '2-digit',
-        month: 'short'
-    };
+    const options = { hour: '2-digit', minute: '2-digit', day: '2-digit', month: 'short' };
     const timeStr = now.toLocaleDateString('en-GB', options);
     lastSavedSpan.textContent = firebaseReady ? `✓ ${timeStr}` : timeStr;
 }
@@ -465,6 +467,7 @@ function generateId() {
 }
 
 function getItemsForFamily(familyId) {
+    if (!inventoryData.items) return [];
     return inventoryData.items.filter(item => item.familyId === familyId);
 }
 
@@ -491,7 +494,10 @@ function getStatusLabel(status) {
 
 // ===== Render Functions =====
 function renderFamilies() {
+    if (!familyNav) return;
     familyNav.innerHTML = '';
+    
+    if (!inventoryData.families) return;
     
     inventoryData.families.forEach((family, index) => {
         const itemsInFamily = getItemsForFamily(family.id).length;
@@ -537,6 +543,8 @@ function renderFamilies() {
 }
 
 function renderItems() {
+    if (!inventoryBody || !emptyState || !inventoryTable) return;
+    
     if (!currentFamilyId) {
         inventoryBody.innerHTML = '';
         emptyState.classList.add('visible');
@@ -546,7 +554,7 @@ function renderItems() {
     
     let items = getItemsForFamily(currentFamilyId);
     
-    const searchTerm = searchInput.value.toLowerCase().trim();
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     if (searchTerm) {
         items = items.filter(item => 
             item.name.toLowerCase().includes(searchTerm) ||
@@ -603,12 +611,9 @@ function selectFamily(familyId) {
     
     if (family) {
         const displayName = getFamilyName(family);
-        currentFamilyName.textContent = `${family.icon || '📦'} ${displayName}`;
-        addItemBtn.disabled = false;
-        
-        const items = getItemsForFamily(familyId);
-        const itemWord = items.length !== 1 ? t('items') : t('item');
-        itemCount.textContent = `${items.length} ${itemWord}`;
+        if (currentFamilyName) currentFamilyName.textContent = `${family.icon || '📦'} ${displayName}`;
+        if (addItemBtn) addItemBtn.disabled = false;
+        updateItemCount();
     }
     
     renderFamilies();
@@ -616,6 +621,7 @@ function selectFamily(familyId) {
 }
 
 function updateItemCount() {
+    if (!itemCount) return;
     if (currentFamilyId) {
         const items = getItemsForFamily(currentFamilyId);
         const itemWord = items.length !== 1 ? t('items') : t('item');
@@ -625,21 +631,23 @@ function updateItemCount() {
 
 // ===== Modal Functions =====
 function openModal(modal) {
+    if (!modal) return;
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function closeModal(modal) {
+    if (!modal) return;
     modal.classList.remove('active');
     document.body.style.overflow = '';
 }
 
 function openAddFamilyModal() {
     editingFamilyId = null;
-    familyModalTitle.textContent = t('addFamily');
-    familyForm.reset();
+    if (familyModalTitle) familyModalTitle.textContent = t('addFamily');
+    if (familyForm) familyForm.reset();
     openModal(familyModal);
-    familyNameInput.focus();
+    if (familyNameInput) familyNameInput.focus();
 }
 
 function openEditFamilyModal(familyId) {
@@ -647,21 +655,21 @@ function openEditFamilyModal(familyId) {
     const family = inventoryData.families.find(f => f.id === familyId);
     if (!family) return;
     
-    familyModalTitle.textContent = t('editFamily');
-    familyNameInput.value = getFamilyName(family);
-    familyIconInput.value = family.icon || '';
+    if (familyModalTitle) familyModalTitle.textContent = t('editFamily');
+    if (familyNameInput) familyNameInput.value = getFamilyName(family);
+    if (familyIconInput) familyIconInput.value = family.icon || '';
     openModal(familyModal);
-    familyNameInput.focus();
+    if (familyNameInput) familyNameInput.focus();
 }
 
 function openAddItemModal() {
     if (!currentFamilyId) return;
     
     editingItemId = null;
-    itemModalTitle.textContent = t('addItem');
-    itemForm.reset();
+    if (itemModalTitle) itemModalTitle.textContent = t('addItem');
+    if (itemForm) itemForm.reset();
     openModal(itemModal);
-    itemNameInput.focus();
+    if (itemNameInput) itemNameInput.focus();
 }
 
 function openEditItemModal(itemId) {
@@ -669,14 +677,14 @@ function openEditItemModal(itemId) {
     const item = inventoryData.items.find(i => i.id === itemId);
     if (!item) return;
     
-    itemModalTitle.textContent = t('editItem');
-    itemNameInput.value = item.name;
-    itemQuantityInput.value = item.quantity;
-    itemUnitInput.value = item.unit;
-    itemMinStockInput.value = item.minStock || '';
-    itemNotesInput.value = item.notes || '';
+    if (itemModalTitle) itemModalTitle.textContent = t('editItem');
+    if (itemNameInput) itemNameInput.value = item.name;
+    if (itemQuantityInput) itemQuantityInput.value = item.quantity;
+    if (itemUnitInput) itemUnitInput.value = item.unit;
+    if (itemMinStockInput) itemMinStockInput.value = item.minStock || '';
+    if (itemNotesInput) itemNotesInput.value = item.notes || '';
     openModal(itemModal);
-    itemNameInput.focus();
+    if (itemNameInput) itemNameInput.focus();
 }
 
 function openDeleteModal(type, id) {
@@ -687,10 +695,10 @@ function openDeleteModal(type, id) {
         const displayName = getFamilyName(family);
         const itemsCount = getItemsForFamily(id).length;
         const itemWord = itemsCount !== 1 ? t('items') : t('item');
-        deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(displayName)}</strong>?${itemsCount > 0 ? `<br><br>${t('deleteConfirmFamilyItems')} <strong>${itemsCount} ${itemWord}</strong> ${t('deleteConfirmFamilyItemsIn')}` : ''}`;
+        if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(displayName)}</strong>?${itemsCount > 0 ? `<br><br>${t('deleteConfirmFamilyItems')} <strong>${itemsCount} ${itemWord}</strong> ${t('deleteConfirmFamilyItemsIn')}` : ''}`;
     } else {
         const item = inventoryData.items.find(i => i.id === id);
-        deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(item.name)}</strong>?`;
+        if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(item.name)}</strong>?`;
     }
     
     openModal(deleteModal);
@@ -698,8 +706,8 @@ function openDeleteModal(type, id) {
 
 // ===== CRUD Operations =====
 function saveFamily() {
-    const name = familyNameInput.value.trim();
-    const icon = familyIconInput.value.trim() || '📦';
+    const name = familyNameInput ? familyNameInput.value.trim() : '';
+    const icon = familyIconInput ? familyIconInput.value.trim() || '📦' : '📦';
     
     if (!name) {
         alert(t('enterFamilyName'));
@@ -727,23 +735,25 @@ function saveFamily() {
     
     if (editingFamilyId === currentFamilyId) {
         const family = inventoryData.families.find(f => f.id === currentFamilyId);
-        if (family) {
+        if (family && currentFamilyName) {
             currentFamilyName.textContent = `${family.icon || '📦'} ${family.name}`;
         }
     }
 }
 
 function saveItem() {
-    const name = itemNameInput.value.trim();
-    const quantity = parseFloat(itemQuantityInput.value) || 0;
-    const unit = itemUnitInput.value;
-    const minStock = parseFloat(itemMinStockInput.value) || 0;
-    const notes = itemNotesInput.value.trim();
+    const name = itemNameInput ? itemNameInput.value.trim() : '';
+    const quantity = itemQuantityInput ? parseFloat(itemQuantityInput.value) || 0 : 0;
+    const unit = itemUnitInput ? itemUnitInput.value : 'units';
+    const minStock = itemMinStockInput ? parseFloat(itemMinStockInput.value) || 0 : 0;
+    const notes = itemNotesInput ? itemNotesInput.value.trim() : '';
     
     if (!name) {
         alert(t('enterItemName'));
         return;
     }
+    
+    if (!inventoryData.items) inventoryData.items = [];
     
     if (editingItemId) {
         const item = inventoryData.items.find(i => i.id === editingItemId);
@@ -782,9 +792,9 @@ function confirmDelete() {
         
         if (currentFamilyId === deleteTarget.id) {
             currentFamilyId = null;
-            currentFamilyName.textContent = t('selectFamily');
-            itemCount.textContent = `0 ${t('items')}`;
-            addItemBtn.disabled = true;
+            if (currentFamilyName) currentFamilyName.textContent = t('selectFamily');
+            if (itemCount) itemCount.textContent = `0 ${t('items')}`;
+            if (addItemBtn) addItemBtn.disabled = true;
         }
     } else {
         inventoryData.items = inventoryData.items.filter(i => i.id !== deleteTarget.id);
@@ -839,9 +849,9 @@ function importData(file) {
                 inventoryData = data;
                 saveData();
                 currentFamilyId = null;
-                currentFamilyName.textContent = t('selectFamily');
-                itemCount.textContent = `0 ${t('items')}`;
-                addItemBtn.disabled = true;
+                if (currentFamilyName) currentFamilyName.textContent = t('selectFamily');
+                if (itemCount) itemCount.textContent = `0 ${t('items')}`;
+                if (addItemBtn) addItemBtn.disabled = true;
                 renderFamilies();
                 renderItems();
                 alert(t('importSuccess'));
@@ -870,69 +880,61 @@ function formatNumber(num) {
 }
 
 // ===== Event Listeners =====
-addFamilyBtn.addEventListener('click', openAddFamilyModal);
-closeFamilyModal.addEventListener('click', () => closeModal(familyModal));
-cancelFamilyBtn.addEventListener('click', () => closeModal(familyModal));
-familyForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveFamily();
-});
+function setupEventListeners() {
+    if (addFamilyBtn) addFamilyBtn.addEventListener('click', openAddFamilyModal);
+    if (closeFamilyModal) closeFamilyModal.addEventListener('click', () => closeModal(familyModal));
+    if (cancelFamilyBtn) cancelFamilyBtn.addEventListener('click', () => closeModal(familyModal));
+    if (familyForm) familyForm.addEventListener('submit', (e) => { e.preventDefault(); saveFamily(); });
 
-addItemBtn.addEventListener('click', openAddItemModal);
-closeItemModal.addEventListener('click', () => closeModal(itemModal));
-cancelItemBtn.addEventListener('click', () => closeModal(itemModal));
-itemForm.addEventListener('submit', (e) => {
-    e.preventDefault();
-    saveItem();
-});
+    if (addItemBtn) addItemBtn.addEventListener('click', openAddItemModal);
+    if (closeItemModal) closeItemModal.addEventListener('click', () => closeModal(itemModal));
+    if (cancelItemBtn) cancelItemBtn.addEventListener('click', () => closeModal(itemModal));
+    if (itemForm) itemForm.addEventListener('submit', (e) => { e.preventDefault(); saveItem(); });
 
-closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
-cancelDeleteBtn.addEventListener('click', () => closeModal(deleteModal));
-confirmDeleteBtn.addEventListener('click', confirmDelete);
+    if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
+    if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => closeModal(deleteModal));
+    if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmDelete);
 
-[familyModal, itemModal, deleteModal].forEach(modal => {
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) {
-            closeModal(modal);
+    [familyModal, itemModal, deleteModal].forEach(modal => {
+        if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            [familyModal, itemModal, deleteModal].forEach(modal => {
+                if (modal && modal.classList.contains('active')) closeModal(modal);
+            });
         }
     });
-});
 
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        [familyModal, itemModal, deleteModal].forEach(modal => {
-            if (modal.classList.contains('active')) {
-                closeModal(modal);
-            }
-        });
-    }
-});
-
-searchInput.addEventListener('input', renderItems);
-
-exportBtn.addEventListener('click', exportData);
-importBtn.addEventListener('click', () => importFile.click());
-importFile.addEventListener('change', (e) => {
-    if (e.target.files.length > 0) {
-        importData(e.target.files[0]);
-        e.target.value = '';
-    }
-});
-
-langToggle.addEventListener('click', toggleLanguage);
+    if (searchInput) searchInput.addEventListener('input', renderItems);
+    if (exportBtn) exportBtn.addEventListener('click', exportData);
+    if (importBtn) importBtn.addEventListener('click', () => importFile && importFile.click());
+    if (importFile) importFile.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) { importData(e.target.files[0]); e.target.value = ''; }
+    });
+    if (langToggle) langToggle.addEventListener('click', toggleLanguage);
+}
 
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 App starting...');
+    
+    // Initialize DOM elements
+    initDOMElements();
+    
+    // Load language
     loadLanguage();
     
-    // Check if Firebase SDK loaded
-    if (typeof firebase === 'undefined') {
-        console.error('Firebase SDK not loaded!');
-        lastSavedSpan.textContent = 'Offline Mode';
-        loadFromLocalStorage();
-    } else {
-        console.log('Firebase SDK loaded, initializing...');
-        initFirebase();
+    // Setup event listeners
+    setupEventListeners();
+    
+    // Initialize Firebase and load data
+    if (initFirebase()) {
+        console.log('🔥 Firebase ready, loading data...');
         loadData();
+    } else {
+        console.log('📂 No Firebase, using localStorage...');
+        loadFromLocalStorage();
     }
 });
