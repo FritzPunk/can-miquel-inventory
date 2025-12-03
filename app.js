@@ -341,6 +341,9 @@ function loadData() {
     if (firebaseReady && database) {
         if (lastSavedSpan) lastSavedSpan.textContent = t('connecting');
         
+        // Clear any old localStorage data when using Firebase
+        localStorage.removeItem(STORAGE_KEY);
+        
         // Listen for real-time updates
         database.ref('inventory').on('value', (snapshot) => {
             console.log('📥 Data received from Firebase');
@@ -350,29 +353,36 @@ function loadData() {
                 // Convert Firebase objects back to arrays
                 inventoryData.families = data.families ? Object.values(data.families) : [];
                 inventoryData.items = data.items ? Object.values(data.items) : [];
+                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
             } else {
                 // Database is empty, initialize with defaults
                 console.log('📝 Database empty, initializing...');
                 initializeDefaultData();
                 saveData();
+                return; // saveData will trigger another 'value' event
             }
             
+            // Always re-render everything
             renderFamilies();
-            renderItems();
-            updateItemCount();
-            if (lastSavedSpan) lastSavedSpan.textContent = '✓ ' + t('connected');
             
-            // Select first family if none selected
-            if (!currentFamilyId && inventoryData.families.length > 0) {
-                selectFamily(inventoryData.families[0].id);
-            } else if (currentFamilyId) {
-                // Re-render current selection
-                const family = inventoryData.families.find(f => f.id === currentFamilyId);
-                if (family) {
-                    currentFamilyName.textContent = `${family.icon || '📦'} ${getFamilyName(family)}`;
+            // Select first family if none selected or if current doesn't exist
+            if (inventoryData.families.length > 0) {
+                const currentExists = currentFamilyId && inventoryData.families.find(f => f.id === currentFamilyId);
+                if (!currentExists) {
+                    selectFamily(inventoryData.families[0].id);
+                } else {
+                    renderItems();
                     updateItemCount();
+                    const family = inventoryData.families.find(f => f.id === currentFamilyId);
+                    if (family && currentFamilyName) {
+                        currentFamilyName.textContent = `${family.icon || '📦'} ${getFamilyName(family)}`;
+                    }
                 }
+            } else {
+                renderItems();
             }
+            
+            if (lastSavedSpan) lastSavedSpan.textContent = '✓ ' + t('connected');
         }, (error) => {
             console.error('❌ Firebase read error:', error);
             loadFromLocalStorage();
