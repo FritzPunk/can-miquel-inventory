@@ -133,7 +133,10 @@ const translations = {
         emptyCierre: 'No closes yet. Add your first day close!',
         cierreNotesPlaceholder: 'Additional observations...',
         cashDiff: 'Cash Diff',
-        cardDiff: 'Card Diff'
+        cardDiff: 'Card Diff',
+        exportCierre: 'Export to Excel',
+        noDataExport: 'No data to export',
+        exportSuccess: 'Excel file exported successfully!'
     },
     es: {
         export: 'Exportar',
@@ -250,7 +253,10 @@ const translations = {
         emptyCierre: '¡Sin cierres aún. Añade tu primer cierre del día!',
         cierreNotesPlaceholder: 'Observaciones adicionales...',
         cashDiff: 'Dif. Efectivo',
-        cardDiff: 'Dif. Tarjetas'
+        cardDiff: 'Dif. Tarjetas',
+        exportCierre: 'Exportar a Excel',
+        noDataExport: 'No hay datos para exportar',
+        exportSuccess: '¡Archivo Excel exportado correctamente!'
     }
 };
 
@@ -284,7 +290,7 @@ let reservationsGrid, reservationsEmpty, reservationCount, addReservationBtn;
 let reservationModal, reservationModalTitle, reservationForm, closeReservationModal, cancelReservationBtn;
 let reservationNameInput, reservationDateInput, reservationTimeInput, reservationPeopleInput;
 let reservationEventInput, reservationPhoneInput, reservationNotesInput;
-let cierreCards, cierreEmpty, addCierreBtn, cierreForm, cierreDateInput;
+let cierreCards, cierreEmpty, addCierreBtn, exportCierreBtn, cierreForm, cierreDateInput;
 let cierreZCashInput, cierreZCardInput, realCashInput, realCardInput, cierreNotesInput;
 let totalZCloseSpan, totalRealSpan, totalDifferenceSpan, cierreStatusDiv;
 
@@ -347,6 +353,7 @@ function initDOMElements() {
     cierreCards = document.getElementById('cierreCards');
     cierreEmpty = document.getElementById('cierreEmpty');
     addCierreBtn = document.getElementById('addCierreBtn');
+    exportCierreBtn = document.getElementById('exportCierreBtn');
     cierreForm = document.getElementById('cierreForm');
     cierreDateInput = document.getElementById('cierreDate');
     cierreZCashInput = document.getElementById('cierreZCash');
@@ -1149,6 +1156,62 @@ function resetCierreForm() {
     calculateCierre();
 }
 
+function exportCierreToExcel() {
+    if (!inventoryData.cierres || inventoryData.cierres.length === 0) {
+        alert(t('noDataExport'));
+        return;
+    }
+    
+    // Create CSV content
+    let csv = 'CIERRE DEL DIA - RESTAURANTE CAN MIQUEL\n\n';
+    csv += 'Fecha,CIERRE Z Efectivo,CIERRE Z Tarjetas,Efectivo Real,Tarjetas Real,Total Cierre Z,Total Real,Dif. Efectivo,Dif. Tarjetas,Dif. Total,Estado,Observaciones\n';
+    
+    // Sort by date ascending
+    const sorted = [...inventoryData.cierres].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    let totalZCash = 0, totalZCard = 0, totalRCash = 0, totalRCard = 0;
+    let totalZSum = 0, totalRSum = 0, totalDiffSum = 0;
+    
+    sorted.forEach(c => {
+        const status = c.status === 'correct' ? 'CORRECTO' : 'REVISAR';
+        csv += `${c.date},${c.zCash.toFixed(2)},${c.zCard.toFixed(2)},${c.rCash.toFixed(2)},${c.rCard.toFixed(2)},${c.totalZ.toFixed(2)},${c.totalR.toFixed(2)},${c.cashDiff.toFixed(2)},${c.cardDiff.toFixed(2)},${c.diff.toFixed(2)},${status},"${c.notes || ''}"\n`;
+        
+        totalZCash += c.zCash;
+        totalZCard += c.zCard;
+        totalRCash += c.rCash;
+        totalRCard += c.rCard;
+        totalZSum += c.totalZ;
+        totalRSum += c.totalR;
+        totalDiffSum += c.diff;
+    });
+    
+    // Add totals row
+    csv += `\nTOTALES,${totalZCash.toFixed(2)},${totalZCard.toFixed(2)},${totalRCash.toFixed(2)},${totalRCard.toFixed(2)},${totalZSum.toFixed(2)},${totalRSum.toFixed(2)},${(totalZCash - totalRCash).toFixed(2)},${(totalZCard - totalRCard).toFixed(2)},${totalDiffSum.toFixed(2)},,\n`;
+    
+    // Add summary
+    csv += `\nRESUMEN\n`;
+    csv += `Total de cierres:,${sorted.length}\n`;
+    csv += `Cierres correctos:,${sorted.filter(c => c.status === 'correct').length}\n`;
+    csv += `Cierres a revisar:,${sorted.filter(c => c.status === 'review').length}\n`;
+    csv += `Diferencia promedio:,$${(totalDiffSum / sorted.length).toFixed(2)}\n`;
+    
+    // Create and download file
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `cierre-restaurante-${date}.csv`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    alert(t('exportSuccess'));
+}
+
 function renderCierres() {
     if (!cierreCards || !cierreEmpty) return;
     
@@ -1463,6 +1526,7 @@ function setupEventListeners() {
 
     // Cierre events
     if (addCierreBtn) addCierreBtn.addEventListener('click', saveCierre);
+    if (exportCierreBtn) exportCierreBtn.addEventListener('click', exportCierreToExcel);
     if (cierreZCashInput) cierreZCashInput.addEventListener('input', calculateCierre);
     if (cierreZCardInput) cierreZCardInput.addEventListener('input', calculateCierre);
     if (realCashInput) realCashInput.addEventListener('input', calculateCierre);
