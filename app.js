@@ -439,19 +439,36 @@ function loadLanguage() {
 
 // ===== Firebase Functions =====
 function initFirebase() {
+    console.log('🔥 Attempting to initialize Firebase...');
+    
     if (typeof firebase === 'undefined') {
         console.error('❌ Firebase SDK not loaded');
+        alert('Firebase not loaded. Using offline mode.');
         return false;
     }
     
     try {
+        // Check if already initialized (iOS sometimes re-initializes)
+        if (firebase.apps.length > 0) {
+            console.log('✅ Firebase already initialized');
+            database = firebase.database();
+            firebaseReady = true;
+            return true;
+        }
+        
         firebase.initializeApp(firebaseConfig);
         database = firebase.database();
+        
+        // Enable offline persistence (important for iOS)
+        database.goOnline();
+        
         firebaseReady = true;
-        console.log('✅ Firebase initialized');
+        console.log('✅ Firebase initialized successfully');
         return true;
     } catch (error) {
         console.error('❌ Firebase init error:', error);
+        console.error('Error details:', error.message, error.code);
+        alert('Firebase connection error: ' + error.message);
         return false;
     }
 }
@@ -513,8 +530,19 @@ function saveToLocalStorage() {
 }
 
 function loadData() {
+    console.log('📥 loadData called, firebaseReady:', firebaseReady);
+    
     if (firebaseReady && database) {
         if (lastSavedSpan) lastSavedSpan.textContent = t('connecting');
+        
+        // Set a timeout for iOS (fallback to localStorage if Firebase takes too long)
+        let firebaseLoaded = false;
+        const timeoutId = setTimeout(() => {
+            if (!firebaseLoaded) {
+                console.warn('⏱️ Firebase timeout, falling back to localStorage');
+                loadFromLocalStorage();
+            }
+        }, 5000); // 5 second timeout
         
         // Clear any old localStorage data when using Firebase
         localStorage.removeItem(STORAGE_KEY);
@@ -522,15 +550,27 @@ function loadData() {
         // Listen for real-time updates
         database.ref('inventory').on('value', (snapshot) => {
             console.log('📥 Data received from Firebase');
+            clearTimeout(timeoutId);
+            firebaseLoaded = true;
+            
             const data = snapshot.val();
+            console.log('📦 Raw Firebase data:', data);
             
             if (data) {
-                // Convert Firebase objects back to arrays
-                inventoryData.families = data.families ? Object.values(data.families) : [];
-                inventoryData.items = data.items ? Object.values(data.items) : [];
-                inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
-                inventoryData.cierres = data.cierres ? Object.values(data.cierres) : [];
-                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items,', inventoryData.reservations.length, 'reservations,', inventoryData.cierres.length, 'cierres');
+                try {
+                    // Convert Firebase objects back to arrays
+                    inventoryData.families = data.families ? Object.values(data.families) : [];
+                    inventoryData.items = data.items ? Object.values(data.items) : [];
+                    inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
+                    inventoryData.cierres = data.cierres ? Object.values(data.cierres) : [];
+                    
+                    console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
+                    console.log('📦 Families:', inventoryData.families);
+                    console.log('📦 Items:', inventoryData.items);
+                } catch (error) {
+                    console.error('❌ Error parsing Firebase data:', error);
+                    initializeDefaultData();
+                }
             } else {
                 // Database is empty, initialize with defaults
                 console.log('📝 Database empty, initializing...');
@@ -540,14 +580,19 @@ function loadData() {
             }
             
             // Always re-render everything
+            console.log('🎨 Rendering families...');
             renderFamilies();
             
             // Select first family if none selected or if current doesn't exist
             if (inventoryData.families.length > 0) {
                 const currentExists = currentFamilyId && inventoryData.families.find(f => f.id === currentFamilyId);
+                console.log('Current family exists:', currentExists, 'currentFamilyId:', currentFamilyId);
+                
                 if (!currentExists) {
+                    console.log('Selecting first family:', inventoryData.families[0].id);
                     selectFamily(inventoryData.families[0].id);
                 } else {
+                    console.log('Rendering existing family');
                     renderItems();
                     updateItemCount();
                     renderMermaxChart();
@@ -557,6 +602,7 @@ function loadData() {
                     }
                 }
             } else {
+                console.log('No families found, rendering empty state');
                 renderItems();
                 renderMermaxChart();
             }
@@ -564,9 +610,11 @@ function loadData() {
             if (lastSavedSpan) lastSavedSpan.textContent = '✓ ' + t('connected');
         }, (error) => {
             console.error('❌ Firebase read error:', error);
+            clearTimeout(timeoutId);
             loadFromLocalStorage();
         });
     } else {
+        console.log('📂 Firebase not ready, using localStorage');
         loadFromLocalStorage();
     }
 }
@@ -693,11 +741,19 @@ function getStatusLabel(status) {
 
 // ===== Render Functions =====
 function renderFamilies() {
-    if (!familyNav) return;
+    console.log('🎨 renderFamilies called');
+    if (!familyNav) {
+        console.error('❌ familyNav element not found');
+        return;
+    }
     familyNav.innerHTML = '';
     
-    if (!inventoryData.families) return;
+    if (!inventoryData.families) {
+        console.warn('⚠️ No families data');
+        return;
+    }
     
+    console.log('Rendering', inventoryData.families.length, 'families');
     inventoryData.families.forEach((family, index) => {
         const itemsInFamily = getItemsForFamily(family.id).length;
         const itemWord = itemsInFamily !== 1 ? t('items') : t('item');
@@ -742,9 +798,19 @@ function renderFamilies() {
 }
 
 function renderItems() {
-    if (!inventoryBody || !emptyState || !inventoryTable) return;
+    console.log('🎨 renderItems called, currentFamilyId:', currentFamilyId);
+    
+    if (!inventoryBody || !emptyState || !inventoryTable) {
+        console.error('❌ Missing DOM elements:', {
+            inventoryBody: !!inventoryBody,
+            emptyState: !!emptyState,
+            inventoryTable: !!inventoryTable
+        });
+        return;
+    }
     
     if (!currentFamilyId) {
+        console.log('No family selected, showing empty state');
         inventoryBody.innerHTML = '';
         emptyState.classList.add('visible');
         inventoryTable.style.display = 'none';
@@ -752,6 +818,7 @@ function renderItems() {
     }
     
     let items = getItemsForFamily(currentFamilyId);
+    console.log('Found', items.length, 'items for family', currentFamilyId);
     
     const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
     if (searchTerm) {
@@ -1646,6 +1713,30 @@ if (window.visualViewport) {
 window.addEventListener('resize', setIOSViewportHeight);
 window.addEventListener('orientationchange', setIOSViewportHeight);
 setIOSViewportHeight();
+
+// Page visibility handler (important for iOS Safari)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && inventoryData && inventoryData.families) {
+        console.log('👀 Page became visible, re-rendering...');
+        renderFamilies();
+        if (currentFamilyId) {
+            renderItems();
+            renderMermaxChart();
+        }
+    }
+});
+
+// Page focus handler (iOS Safari)
+window.addEventListener('focus', () => {
+    console.log('🎯 Window focused, checking state...');
+    if (inventoryData && inventoryData.families && inventoryData.families.length > 0) {
+        renderFamilies();
+        if (currentFamilyId) {
+            renderItems();
+            renderMermaxChart();
+        }
+    }
+});
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App starting...');

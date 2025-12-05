@@ -1,5 +1,5 @@
 // Service Worker for Can Miquel Inventory PWA
-const CACHE_NAME = 'can-miquel-inventory-v12';
+const CACHE_NAME = 'can-miquel-inventory-v13';
 const ASSETS = [
     './',
     './index.html',
@@ -38,6 +38,7 @@ self.addEventListener('activate', (event) => {
 });
 
 // Fetch event - Network first for HTML (iOS fix), cache first for others
+
 self.addEventListener('fetch', (event) => {
     // Network-first strategy for HTML files (better for iOS updates)
     if (event.request.mode === 'navigate' || event.request.destination === 'document') {
