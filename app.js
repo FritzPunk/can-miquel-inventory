@@ -111,7 +111,29 @@ const translations = {
         reservationNotesPlaceholder: 'Special requests, allergies, etc...',
         emptyReservations: 'No reservations yet. Add your first reservation!',
         people: 'people',
-        person: 'person'
+        person: 'person',
+        
+        // Cierre del Día
+        cierre: 'Day Close',
+        cierreDelDia: 'Day Close - Cash Reconciliation',
+        addCierre: 'Add Close',
+        saveCierre: 'Save Close',
+        cierreZ: 'Z-CLOSE (System Report)',
+        cierreZCash: 'Cash Z-Close ($)',
+        cierreZCard: 'Card Z-Close ($)',
+        realMoney: 'Real Money (Counted)',
+        realCash: 'Real Cash ($)',
+        realCard: 'Real Card ($)',
+        totalZClose: 'Total Z-Close',
+        totalReal: 'Total Real',
+        difference: 'Difference',
+        correct: 'CORRECT',
+        review: 'REVIEW',
+        history: 'History',
+        emptyCierre: 'No closes yet. Add your first day close!',
+        cierreNotesPlaceholder: 'Additional observations...',
+        cashDiff: 'Cash Diff',
+        cardDiff: 'Card Diff'
     },
     es: {
         export: 'Exportar',
@@ -206,7 +228,29 @@ const translations = {
         reservationNotesPlaceholder: 'Peticiones especiales, alergias, etc...',
         emptyReservations: '¡Sin reservas aún. Añade tu primera reserva!',
         people: 'personas',
-        person: 'persona'
+        person: 'persona',
+        
+        // Cierre del Día
+        cierre: 'Cierre',
+        cierreDelDia: 'Cierre del Día - Reconciliación de Caja',
+        addCierre: 'Añadir Cierre',
+        saveCierre: 'Guardar Cierre',
+        cierreZ: 'CIERRE DE Z (Del Sistema)',
+        cierreZCash: 'CIERRE Z - Efectivo ($)',
+        cierreZCard: 'CIERRE Z - Visa/Tarjetas ($)',
+        realMoney: 'Dinero Real (Contado)',
+        realCash: 'Efectivo Real ($)',
+        realCard: 'Visa/Tarjetas Real ($)',
+        totalZClose: 'Total Cierre Z',
+        totalReal: 'Total Real',
+        difference: 'Diferencia',
+        correct: 'CORRECTO',
+        review: 'REVISAR',
+        history: 'Historial',
+        emptyCierre: '¡Sin cierres aún. Añade tu primer cierre del día!',
+        cierreNotesPlaceholder: 'Observaciones adicionales...',
+        cashDiff: 'Dif. Efectivo',
+        cardDiff: 'Dif. Tarjetas'
     }
 };
 
@@ -216,7 +260,8 @@ let currentLang = 'en';
 let inventoryData = {
     families: [],
     items: [],
-    reservations: []
+    reservations: [],
+    cierres: []
 };
 
 let currentFamilyId = null;
@@ -239,6 +284,9 @@ let reservationsGrid, reservationsEmpty, reservationCount, addReservationBtn;
 let reservationModal, reservationModalTitle, reservationForm, closeReservationModal, cancelReservationBtn;
 let reservationNameInput, reservationDateInput, reservationTimeInput, reservationPeopleInput;
 let reservationEventInput, reservationPhoneInput, reservationNotesInput;
+let cierreCards, cierreEmpty, addCierreBtn, cierreForm, cierreDateInput;
+let cierreZCashInput, cierreZCardInput, realCashInput, realCardInput, cierreNotesInput;
+let totalZCloseSpan, totalRealSpan, totalDifferenceSpan, cierreStatusDiv;
 
 function initDOMElements() {
     familyNav = document.getElementById('familyNav');
@@ -296,6 +344,20 @@ function initDOMElements() {
     reservationEventInput = document.getElementById('reservationEvent');
     reservationPhoneInput = document.getElementById('reservationPhone');
     reservationNotesInput = document.getElementById('reservationNotes');
+    cierreCards = document.getElementById('cierreCards');
+    cierreEmpty = document.getElementById('cierreEmpty');
+    addCierreBtn = document.getElementById('addCierreBtn');
+    cierreForm = document.getElementById('cierreForm');
+    cierreDateInput = document.getElementById('cierreDate');
+    cierreZCashInput = document.getElementById('cierreZCash');
+    cierreZCardInput = document.getElementById('cierreZCard');
+    realCashInput = document.getElementById('realCash');
+    realCardInput = document.getElementById('realCard');
+    cierreNotesInput = document.getElementById('cierreNotes');
+    totalZCloseSpan = document.getElementById('totalZClose');
+    totalRealSpan = document.getElementById('totalReal');
+    totalDifferenceSpan = document.getElementById('totalDifference');
+    cierreStatusDiv = document.getElementById('cierreStatus');
 }
 
 // ===== Translation Functions =====
@@ -384,7 +446,8 @@ function saveData() {
         const dataToSave = {
             families: {},
             items: {},
-            reservations: {}
+            reservations: {},
+            cierres: {}
         };
         
         inventoryData.families.forEach((family, index) => {
@@ -398,6 +461,12 @@ function saveData() {
         if (inventoryData.reservations) {
             inventoryData.reservations.forEach((reservation, index) => {
                 dataToSave.reservations[reservation.id] = reservation;
+            });
+        }
+        
+        if (inventoryData.cierres) {
+            inventoryData.cierres.forEach((cierre, index) => {
+                dataToSave.cierres[cierre.id] = cierre;
             });
         }
         
@@ -441,7 +510,8 @@ function loadData() {
                 inventoryData.families = data.families ? Object.values(data.families) : [];
                 inventoryData.items = data.items ? Object.values(data.items) : [];
                 inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
-                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items,', inventoryData.reservations.length, 'reservations');
+                inventoryData.cierres = data.cierres ? Object.values(data.cierres) : [];
+                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items,', inventoryData.reservations.length, 'reservations,', inventoryData.cierres.length, 'cierres');
             } else {
                 // Database is empty, initialize with defaults
                 console.log('📝 Database empty, initializing...');
@@ -517,7 +587,8 @@ function initializeDefaultData() {
             { id: generateId(), nameKey: 'defaultSeafood', icon: '🦐' }
         ],
         items: [],
-        reservations: []
+        reservations: [],
+        cierres: []
     };
 }
 
@@ -987,6 +1058,162 @@ function importData(file) {
     reader.readAsText(file);
 }
 
+// ===== Cierre del Día Functions =====
+function calculateCierre() {
+    const zCash = parseFloat(cierreZCashInput?.value) || 0;
+    const zCard = parseFloat(cierreZCardInput?.value) || 0;
+    const rCash = parseFloat(realCashInput?.value) || 0;
+    const rCard = parseFloat(realCardInput?.value) || 0;
+    
+    const totalZ = zCash + zCard;
+    const totalR = rCash + rCard;
+    const diff = totalZ - totalR;
+    const cashDiff = zCash - rCash;
+    const cardDiff = zCard - rCard;
+    
+    if (totalZCloseSpan) totalZCloseSpan.textContent = `$${totalZ.toFixed(2)}`;
+    if (totalRealSpan) totalRealSpan.textContent = `$${totalR.toFixed(2)}`;
+    if (totalDifferenceSpan) totalDifferenceSpan.textContent = `$${diff.toFixed(2)}`;
+    
+    if (cierreStatusDiv) {
+        const isCorrect = Math.abs(diff) <= 0.01;
+        cierreStatusDiv.textContent = `${t('status')}: ${isCorrect ? '✅ ' + t('correct') : '⚠️ ' + t('review')}`;
+        cierreStatusDiv.className = `calc-status ${isCorrect ? 'correct' : 'review'}`;
+    }
+}
+
+function saveCierre() {
+    const date = cierreDateInput?.value;
+    const zCash = parseFloat(cierreZCashInput?.value) || 0;
+    const zCard = parseFloat(cierreZCardInput?.value) || 0;
+    const rCash = parseFloat(realCashInput?.value) || 0;
+    const rCard = parseFloat(realCardInput?.value) || 0;
+    const notes = cierreNotesInput?.value.trim() || '';
+    
+    if (!date) {
+        alert('Please enter a date');
+        return;
+    }
+    
+    if (zCash === 0 && zCard === 0 && rCash === 0 && rCard === 0) {
+        alert('Please enter at least one value');
+        return;
+    }
+    
+    const totalZ = zCash + zCard;
+    const totalR = rCash + rCard;
+    const diff = totalZ - totalR;
+    const cashDiff = zCash - rCash;
+    const cardDiff = zCard - rCard;
+    const status = Math.abs(diff) <= 0.01 ? 'correct' : 'review';
+    
+    if (!inventoryData.cierres) inventoryData.cierres = [];
+    
+    // Check if already exists for this date
+    const existingIndex = inventoryData.cierres.findIndex(c => c.date === date);
+    const cierreData = {
+        id: existingIndex >= 0 ? inventoryData.cierres[existingIndex].id : generateId(),
+        date,
+        zCash,
+        zCard,
+        rCash,
+        rCard,
+        totalZ,
+        totalR,
+        diff,
+        cashDiff,
+        cardDiff,
+        status,
+        notes
+    };
+    
+    if (existingIndex >= 0) {
+        if (confirm(`Already exists a close for ${date}. Replace it?`)) {
+            inventoryData.cierres[existingIndex] = cierreData;
+        } else {
+            return;
+        }
+    } else {
+        inventoryData.cierres.push(cierreData);
+    }
+    
+    saveData();
+    resetCierreForm();
+    renderCierres();
+    alert(`Close saved for ${date}`);
+}
+
+function resetCierreForm() {
+    if (cierreForm) cierreForm.reset();
+    if (cierreDateInput) cierreDateInput.value = new Date().toISOString().split('T')[0];
+    calculateCierre();
+}
+
+function renderCierres() {
+    if (!cierreCards || !cierreEmpty) return;
+    
+    if (!inventoryData.cierres || inventoryData.cierres.length === 0) {
+        cierreCards.innerHTML = '';
+        cierreEmpty.classList.add('visible');
+        return;
+    }
+    
+    cierreEmpty.classList.remove('visible');
+    
+    // Sort by date descending
+    const sorted = [...inventoryData.cierres].sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    cierreCards.innerHTML = '';
+    sorted.forEach((cierre) => {
+        const card = document.createElement('div');
+        card.className = `cierre-history-card ${cierre.status}`;
+        
+        card.innerHTML = `
+            <div class="cierre-card-header">
+                <div class="cierre-card-date">📅 ${formatDate(cierre.date)}</div>
+                <div class="cierre-card-status ${cierre.status}">
+                    ${cierre.status === 'correct' ? '✅ ' + t('correct') : '⚠️ ' + t('review')}
+                </div>
+            </div>
+            <div class="cierre-card-details">
+                <div class="cierre-detail">
+                    <span class="cierre-detail-label">${t('cierreZCash')}</span>
+                    <span class="cierre-detail-value">$${cierre.zCash.toFixed(2)}</span>
+                </div>
+                <div class="cierre-detail">
+                    <span class="cierre-detail-label">${t('realCash')}</span>
+                    <span class="cierre-detail-value">$${cierre.rCash.toFixed(2)}</span>
+                </div>
+                <div class="cierre-detail">
+                    <span class="cierre-detail-label">${t('cierreZCard')}</span>
+                    <span class="cierre-detail-value">$${cierre.zCard.toFixed(2)}</span>
+                </div>
+                <div class="cierre-detail">
+                    <span class="cierre-detail-label">${t('realCard')}</span>
+                    <span class="cierre-detail-value">$${cierre.rCard.toFixed(2)}</span>
+                </div>
+            </div>
+            <div class="cierre-card-summary">
+                <div class="cierre-summary-row">
+                    <span>${t('cashDiff')}:</span>
+                    <strong style="color: ${Math.abs(cierre.cashDiff) <= 0.01 ? '#6b9b6b' : '#c9a349'};">$${cierre.cashDiff.toFixed(2)}</strong>
+                </div>
+                <div class="cierre-summary-row">
+                    <span>${t('cardDiff')}:</span>
+                    <strong style="color: ${Math.abs(cierre.cardDiff) <= 0.01 ? '#6b9b6b' : '#c9a349'};">$${cierre.cardDiff.toFixed(2)}</strong>
+                </div>
+                <div class="cierre-summary-row total">
+                    <span>${t('difference')}:</span>
+                    <strong style="color: ${Math.abs(cierre.diff) <= 0.01 ? '#6b9b6b' : '#b85450'};">$${cierre.diff.toFixed(2)}</strong>
+                </div>
+            </div>
+            ${cierre.notes ? `<div class="item-notes" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border);">${escapeHtml(cierre.notes)}</div>` : ''}
+        `;
+        
+        cierreCards.appendChild(card);
+    });
+}
+
 // ===== Tab Navigation =====
 function switchTab(tabName) {
     currentTab = tabName;
@@ -1010,6 +1237,11 @@ function switchTab(tabName) {
     } else if (tabName === 'reservations') {
         document.getElementById('reservationsSection').classList.add('active');
         renderReservations();
+    } else if (tabName === 'cierre') {
+        document.getElementById('cierreSection').classList.add('active');
+        renderCierres();
+        if (cierreDateInput) cierreDateInput.value = new Date().toISOString().split('T')[0];
+        calculateCierre();
     }
 }
 
@@ -1229,6 +1461,13 @@ function setupEventListeners() {
         }
     });
 
+    // Cierre events
+    if (addCierreBtn) addCierreBtn.addEventListener('click', saveCierre);
+    if (cierreZCashInput) cierreZCashInput.addEventListener('input', calculateCierre);
+    if (cierreZCardInput) cierreZCardInput.addEventListener('input', calculateCierre);
+    if (realCashInput) realCashInput.addEventListener('input', calculateCierre);
+    if (realCardInput) realCardInput.addEventListener('input', calculateCierre);
+    
     // Other events
     if (searchInput) searchInput.addEventListener('input', renderItems);
     if (exportBtn) exportBtn.addEventListener('click', exportData);
