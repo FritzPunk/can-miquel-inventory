@@ -441,34 +441,56 @@ function loadLanguage() {
 function initFirebase() {
     console.log('🔥 Attempting to initialize Firebase...');
     
+    // Check if Firebase SDK loaded
     if (typeof firebase === 'undefined') {
-        console.error('❌ Firebase SDK not loaded');
-        alert('Firebase not loaded. Using offline mode.');
+        console.warn('⚠️ Firebase SDK not loaded - using offline mode');
         return false;
     }
     
     try {
         // Check if already initialized (iOS sometimes re-initializes)
-        if (firebase.apps.length > 0) {
+        if (firebase.apps && firebase.apps.length > 0) {
             console.log('✅ Firebase already initialized');
             database = firebase.database();
             firebaseReady = true;
             return true;
         }
         
-        firebase.initializeApp(firebaseConfig);
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
         database = firebase.database();
         
-        // Enable offline persistence (important for iOS)
-        database.goOnline();
+        // Test connection with timeout
+        const testRef = database.ref('.info/connected');
+        let connectionTimeout = setTimeout(() => {
+            console.warn('⚠️ Firebase connection timeout');
+            firebaseReady = false;
+        }, 3000);
         
-        firebaseReady = true;
-        console.log('✅ Firebase initialized successfully');
+        testRef.once('value').then((snap) => {
+            clearTimeout(connectionTimeout);
+            if (snap.val() === true) {
+                console.log('✅ Firebase connected successfully');
+                database.goOnline();
+                firebaseReady = true;
+            } else {
+                console.warn('⚠️ Firebase not connected');
+                firebaseReady = false;
+            }
+        }).catch((error) => {
+            clearTimeout(connectionTimeout);
+            console.error('❌ Firebase connection test failed:', error);
+            firebaseReady = false;
+        });
+        
+        console.log('✅ Firebase initialized');
         return true;
     } catch (error) {
         console.error('❌ Firebase init error:', error);
-        console.error('Error details:', error.message, error.code);
-        alert('Firebase connection error: ' + error.message);
+        if (error.message) {
+            console.error('Error message:', error.message);
+        }
+        firebaseReady = false;
         return false;
     }
 }
@@ -619,18 +641,43 @@ function loadData() {
     }
 }
 
-function loadFromLocalStorage() {
-    console.log('📂 Loading from localStorage');
+function loadFromLocalStorageSync() {
+    console.log('📂 Loading from localStorage (sync)');
     try {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             inventoryData = JSON.parse(saved);
             migrateDefaultFamilies();
+            
+            renderFamilies();
+            renderItems();
+            renderMermaxChart();
+            
+            if (inventoryData.families.length > 0) {
+                selectFamily(inventoryData.families[0].id);
+            }
+            
+            if (lastSavedSpan) lastSavedSpan.textContent = t('offline');
+            console.log('✅ Loaded from localStorage:', inventoryData.families?.length || 0, 'families');
+            return true;
         } else {
-            initializeDefaultData();
-            saveToLocalStorage();
+            console.log('📝 No saved data in localStorage');
+            return false;
         }
-        
+    } catch (error) {
+        console.error('❌ Error loading from localStorage:', error);
+        inventoryData = { families: [], items: [], reservations: [], cierres: [] };
+        return false;
+    }
+}
+
+function loadFromLocalStorage() {
+    console.log('📂 Loading from localStorage');
+    const hasData = loadFromLocalStorageSync();
+    
+    if (!hasData) {
+        initializeDefaultData();
+        saveToLocalStorage();
         renderFamilies();
         renderItems();
         renderMermaxChart();
@@ -638,12 +685,9 @@ function loadFromLocalStorage() {
         if (inventoryData.families.length > 0) {
             selectFamily(inventoryData.families[0].id);
         }
-        
-        if (lastSavedSpan) lastSavedSpan.textContent = t('offline');
-    } catch (error) {
-        console.error('Error loading from localStorage:', error);
-        inventoryData = { families: [], items: [] };
     }
+    
+    if (lastSavedSpan) lastSavedSpan.textContent = t('offline');
 }
 
 function initializeDefaultData() {
@@ -1697,6 +1741,33 @@ function setupEventListeners() {
         if (e.target.files.length > 0) { importData(e.target.files[0]); e.target.value = ''; }
     });
     if (langToggle) langToggle.addEventListener('click', toggleLanguage);
+    
+    // Refresh button
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', () => {
+            console.log('🔄 Manual refresh triggered');
+            refreshBtn.style.transform = 'rotate(360deg)';
+            refreshBtn.style.transition = 'transform 0.5s';
+            setTimeout(() => {
+                refreshBtn.style.transform = 'rotate(0deg)';
+            }, 500);
+            
+            // Reload data
+            if (firebaseReady && database) {
+                loadData();
+            } else {
+                loadFromLocalStorage();
+            }
+            
+            // Re-render everything
+            renderFamilies();
+            if (currentFamilyId) {
+                renderItems();
+                renderMermaxChart();
+            }
+        });
+    }
 }
 
 // ===== Initialize =====
@@ -1738,27 +1809,75 @@ window.addEventListener('focus', () => {
     }
 });
 
+function updateLoadingStatus(message) {
+    const statusEl = document.getElementById('loadingStatus');
+    if (statusEl) {
+        statusEl.textContent = message;
+    }
+    console.log('📢', message);
+}
+
+function hideLoadingScreen() {
+    const loadingScreen = document.getElementById('loadingScreen');
+    if (loadingScreen) {
+        loadingScreen.style.opacity = '0';
+        loadingScreen.style.transition = 'opacity 0.3s';
+        setTimeout(() => {
+            loadingScreen.style.display = 'none';
+        }, 300);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App starting...');
+    updateLoadingStatus('Initializing...');
     
     // Fix iOS viewport height
     setIOSViewportHeight();
     
     // Initialize DOM elements
+    updateLoadingStatus('Setting up interface...');
     initDOMElements();
     
     // Load language
+    updateLoadingStatus('Loading language settings...');
     loadLanguage();
     
     // Setup event listeners
+    updateLoadingStatus('Setting up controls...');
     setupEventListeners();
     
-    // Initialize Firebase and load data
-    if (initFirebase()) {
-        console.log('🔥 Firebase ready, loading data...');
-        loadData();
+    // CHANGED: Load from localStorage FIRST (offline-first approach for iOS)
+    updateLoadingStatus('Loading data...');
+    const hasLocalData = loadFromLocalStorageSync();
+    
+    if (hasLocalData) {
+        console.log('✅ Loaded from localStorage, showing app');
+        updateLoadingStatus('Ready!');
+        hideLoadingScreen();
     } else {
-        console.log('📂 No Firebase, using localStorage...');
-        loadFromLocalStorage();
+        updateLoadingStatus('No local data, initializing...');
     }
+    
+    // Try Firebase in background (don't block the UI)
+    setTimeout(() => {
+        updateLoadingStatus('Connecting to server...');
+        if (initFirebase()) {
+            console.log('🔥 Firebase ready, syncing data...');
+            loadData();
+            hideLoadingScreen();
+        } else {
+            console.log('📂 Firebase unavailable, using offline mode');
+            if (!hasLocalData) {
+                // No local data and no Firebase, initialize defaults
+                initializeDefaultData();
+                renderFamilies();
+                if (inventoryData.families.length > 0) {
+                    selectFamily(inventoryData.families[0].id);
+                }
+                saveToLocalStorage();
+            }
+            hideLoadingScreen();
+        }
+    }, 100); // Small delay to ensure UI is ready
 });
