@@ -460,30 +460,24 @@ function initFirebase() {
         const app = firebase.initializeApp(firebaseConfig);
         database = firebase.database();
         
-        // Test connection with timeout
-        const testRef = database.ref('.info/connected');
-        let connectionTimeout = setTimeout(() => {
-            console.warn('⚠️ Firebase connection timeout');
-            firebaseReady = false;
-        }, 3000);
+        // Set firebaseReady immediately (synchronous)
+        // Firebase will handle connection and reconnection automatically
+        firebaseReady = true;
+        console.log('✅ Firebase initialized');
         
+        // Test connection in background (for logging only, doesn't affect functionality)
+        const testRef = database.ref('.info/connected');
         testRef.once('value').then((snap) => {
-            clearTimeout(connectionTimeout);
             if (snap.val() === true) {
-                console.log('✅ Firebase connected successfully');
+                console.log('✅ Firebase connection verified - online');
                 database.goOnline();
-                firebaseReady = true;
             } else {
-                console.warn('⚠️ Firebase not connected');
-                firebaseReady = false;
+                console.log('ℹ️ Firebase connection pending - will auto-connect');
             }
         }).catch((error) => {
-            clearTimeout(connectionTimeout);
-            console.error('❌ Firebase connection test failed:', error);
-            firebaseReady = false;
+            console.warn('⚠️ Firebase connection test error (will retry automatically):', error.message);
         });
         
-        console.log('✅ Firebase initialized');
         return true;
     } catch (error) {
         console.error('❌ Firebase init error:', error);
@@ -1862,14 +1856,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Try Firebase in background (don't block the UI)
     setTimeout(() => {
         updateLoadingStatus('Connecting to server...');
-        const firebaseInitialized = initFirebase();
-        
-        if (firebaseInitialized) {
-            console.log('🔥 Firebase initialized, syncing data...');
-            // firebaseReady is now true, loadData will use Firebase
+        if (initFirebase()) {
+            console.log('🔥 Firebase ready, syncing data...');
             loadData();
+            hideLoadingScreen();
         } else {
-            console.log('📂 Firebase SDK unavailable, using offline mode');
+            console.log('📂 Firebase unavailable, using offline mode');
             if (!hasLocalData) {
                 // No local data and no Firebase, initialize defaults
                 initializeDefaultData();
@@ -1879,7 +1871,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 saveToLocalStorage();
             }
+            hideLoadingScreen();
         }
-        hideLoadingScreen();
     }, 100); // Small delay to ensure UI is ready
 });
