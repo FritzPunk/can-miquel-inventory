@@ -31,7 +31,10 @@ const translations = {
         quantity: 'Quantity',
         unit: 'Unit',
         minStock: 'Min. Stock',
-        weekly: 'Weekly Use',
+        weekly: 'Mermax',
+        weeklyWaste: 'This Week Waste',
+        realStock: 'Real Stock',
+        applyMermax: 'Apply Waste',
         status: 'Status',
         actions: 'Actions',
         inStock: 'In Stock',
@@ -50,7 +53,8 @@ const translations = {
         itemNameLabel: 'Item Name',
         itemNamePlaceholder: 'e.g., Olive Oil, Chicken Breast...',
         minStockLabel: 'Minimum Stock (alert threshold)',
-        weeklyLabel: 'Weekly Usage/Waste',
+        weeklyLabel: 'This Week Waste (Mermax)',
+        weeklyLabelHelp: 'Amount to deduct from inventory',
         notesLabel: 'Notes (optional)',
         notesPlaceholder: 'Any additional notes...',
         saveItem: 'Save Item',
@@ -100,7 +104,10 @@ const translations = {
         quantity: 'Cantidad',
         unit: 'Unidad',
         minStock: 'Stock Mín.',
-        weekly: 'Uso Semanal',
+        weekly: 'Mermax',
+        weeklyWaste: 'Desperdicio Semanal',
+        realStock: 'Stock Real',
+        applyMermax: 'Aplicar Desperdicio',
         status: 'Estado',
         actions: 'Acciones',
         inStock: 'En Stock',
@@ -119,7 +126,8 @@ const translations = {
         itemNameLabel: 'Nombre del Artículo',
         itemNamePlaceholder: 'ej., Aceite de Oliva, Pechuga de Pollo...',
         minStockLabel: 'Stock Mínimo (umbral de alerta)',
-        weeklyLabel: 'Uso/Desperdicio Semanal',
+        weeklyLabel: 'Desperdicio Esta Semana (Mermax)',
+        weeklyLabelHelp: 'Cantidad a deducir del inventario',
         notesLabel: 'Notas (opcional)',
         notesPlaceholder: 'Notas adicionales...',
         saveItem: 'Guardar Artículo',
@@ -487,16 +495,23 @@ function getItemsForFamily(familyId) {
 }
 
 function getItemStatus(item) {
+    // Calculate real stock (quantity - weekly waste)
+    const realStock = item.quantity - (item.weekly || 0);
+    
     if (item.minStock === null || item.minStock === undefined || item.minStock === 0) {
-        return 'ok';
+        return realStock <= 0 ? 'critical' : 'ok';
     }
-    if (item.quantity <= 0) {
+    if (realStock <= 0) {
         return 'critical';
     }
-    if (item.quantity <= item.minStock) {
+    if (realStock <= item.minStock) {
         return 'low';
     }
     return 'ok';
+}
+
+function getRealStock(item) {
+    return item.quantity - (item.weekly || 0);
 }
 
 function getStatusLabel(status) {
@@ -590,6 +605,7 @@ function renderItems() {
     inventoryBody.innerHTML = '';
     items.forEach((item, index) => {
         const status = getItemStatus(item);
+        const realStock = getRealStock(item);
         const row = document.createElement('tr');
         row.style.animationDelay = `${index * 0.03}s`;
         row.innerHTML = `
@@ -598,9 +614,10 @@ function renderItems() {
                 ${item.notes ? `<div class="item-notes">${escapeHtml(item.notes)}</div>` : ''}
             </td>
             <td class="quantity-cell">${formatNumber(item.quantity)}</td>
+            <td class="quantity-cell" style="color: #c9a349;">${item.weekly ? formatNumber(item.weekly) : '-'}</td>
+            <td class="quantity-cell" style="font-weight: 700; color: ${realStock < 0 ? '#b85450' : '#6b9b6b'};">${formatNumber(realStock)}</td>
             <td class="unit-cell">${escapeHtml(item.unit)}</td>
             <td>${item.minStock ? formatNumber(item.minStock) : '-'}</td>
-            <td>${item.weekly ? formatNumber(item.weekly) : '-'}</td>
             <td><span class="status-badge ${status}">${getStatusLabel(status)}</span></td>
             <td>
                 <div class="action-buttons">
