@@ -556,6 +556,12 @@ body {
 .inventory-table {
     width: 100%;
     border-collapse: collapse;
+    /* iOS Safari: Force visibility */
+    opacity: 1;
+    visibility: visible;
+    display: table;
+    -webkit-transform: translateZ(0);
+    transform: translateZ(0);
 }
 
 .inventory-table th {
@@ -576,14 +582,27 @@ body {
     padding: 1rem 1.25rem;
     border-bottom: 1px solid var(--color-border);
     vertical-align: middle;
+    /* iOS Safari: Force cell visibility */
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .inventory-table tr:last-child td {
     border-bottom: none;
 }
 
+.inventory-table tbody {
+    /* iOS Safari: Force table body visibility */
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: table-row-group !important;
+}
+
 .inventory-table tbody tr {
     transition: background var(--transition);
+    /* iOS Safari: Force row visibility */
+    opacity: 1 !important;
+    visibility: visible !important;
 }
 
 .inventory-table tbody tr:hover {
@@ -881,8 +900,21 @@ form {
     animation: fadeIn 0.3s ease forwards;
 }
 
-.inventory-table tbody tr {
-    animation: fadeIn 0.3s ease forwards;
+/* iOS Safari: Disable animations on table rows (causes rendering issues) */
+@supports (-webkit-touch-callout: none) {
+    .inventory-table tbody tr {
+        animation: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        display: table-row !important;
+    }
+}
+
+/* Other browsers: Keep animation */
+@supports not (-webkit-touch-callout: none) {
+    .inventory-table tbody tr {
+        animation: fadeIn 0.3s ease forwards;
+    }
 }
 
 /* ===== Scrollbar ===== */
