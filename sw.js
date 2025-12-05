@@ -1,5 +1,5 @@
 // Service Worker for Can Miquel Inventory PWA
-const CACHE_NAME = 'can-miquel-inventory-v9';
+const CACHE_NAME = 'can-miquel-inventory-v10';
 const ASSETS = [
     './',
     './index.html',

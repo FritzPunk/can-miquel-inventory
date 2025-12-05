@@ -802,14 +802,26 @@ function renderItems() {
 // ===== Mermax Chart =====
 function renderMermaxChart() {
     const chartElement = document.getElementById('mermaxChart');
-    if (!chartElement) return;
+    const chartContainer = document.getElementById('mermaxChartContainer');
+    
+    if (!chartElement || !chartContainer) {
+        console.log('Chart elements not found');
+        return;
+    }
+    
+    // Make sure we have the data structure
+    if (!inventoryData || !inventoryData.families || !inventoryData.items) {
+        console.log('Inventory data not ready');
+        chartContainer.style.display = 'none';
+        return;
+    }
     
     // Calculate mermax totals by family
     const familyMermax = {};
     let totalMermax = 0;
     
     inventoryData.families.forEach(family => {
-        const items = getItemsForFamily(family.id);
+        const items = inventoryData.items.filter(item => item.familyId === family.id);
         const familyTotal = items.reduce((sum, item) => {
             return sum + (parseFloat(item.weekly) || 0);
         }, 0);
@@ -827,6 +839,9 @@ function renderMermaxChart() {
     // Sort by total (descending)
     const sortedFamilies = Object.entries(familyMermax)
         .sort((a, b) => b[1].total - a[1].total);
+    
+    // Always show container
+    chartContainer.style.display = 'block';
     
     // Render chart
     if (sortedFamilies.length === 0) {
