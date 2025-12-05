@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no">
     <title>Can Miquel Inventory</title>
     
     <!-- PWA Meta Tags -->
@@ -400,12 +401,26 @@
     
     <script src="app.js"></script>
     <script>
-        // Register Service Worker for PWA
+        // Register Service Worker for PWA with iOS compatibility
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
                     .then((registration) => {
                         console.log('SW registered:', registration.scope);
+                        
+                        // Check for updates (important for iOS)
+                        registration.update();
+                        
+                        // Reload page when new service worker is installed (iOS fix)
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                                    console.log('New service worker activated, reloading...');
+                                    window.location.reload();
+                                }
+                            });
+                        });
                     })
                     .catch((error) => {
                         console.log('SW registration failed:', error);

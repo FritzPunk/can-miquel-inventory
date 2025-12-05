@@ -1633,8 +1633,25 @@ function setupEventListeners() {
 }
 
 // ===== Initialize =====
+// iOS viewport height fix
+function setIOSViewportHeight() {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Set viewport height on load and resize (important for iOS)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setIOSViewportHeight);
+}
+window.addEventListener('resize', setIOSViewportHeight);
+window.addEventListener('orientationchange', setIOSViewportHeight);
+setIOSViewportHeight();
+
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 App starting...');
+    
+    // Fix iOS viewport height
+    setIOSViewportHeight();
     
     // Initialize DOM elements
     initDOMElements();

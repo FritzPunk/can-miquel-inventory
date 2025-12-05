@@ -1,5 +1,5 @@
 // Service Worker for Can Miquel Inventory PWA
-const CACHE_NAME = 'can-miquel-inventory-v11';
+const CACHE_NAME = 'can-miquel-inventory-v12';
 const ASSETS = [
     './',
     './index.html',
@@ -37,32 +37,51 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Fetch event - serve from cache, fall back to network
+// Fetch event - Network first for HTML (iOS fix), cache first for others
 self.addEventListener('fetch', (event) => {
-    event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // Return cached version or fetch from network
-                return response || fetch(event.request)
-                    .then((fetchResponse) => {
-                        // Don't cache external requests
-                        if (!event.request.url.startsWith(self.location.origin)) {
-                            return fetchResponse;
-                        }
-                        // Cache new requests
-                        return caches.open(CACHE_NAME)
-                            .then((cache) => {
-                                cache.put(event.request, fetchResponse.clone());
-                                return fetchResponse;
-                            });
+    // Network-first strategy for HTML files (better for iOS updates)
+    if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Clone and cache the response
+                    const responseClone = response.clone();
+                    caches.open(CACHE_NAME).then((cache) => {
+                        cache.put(event.request, responseClone);
                     });
-            })
-            .catch(() => {
-                // Offline fallback
-                if (event.request.destination === 'document') {
+                    return response;
+                })
+                .catch(() => {
+                    // Fall back to cache if offline
+                    return caches.match(event.request).then((response) => {
+                        return response || caches.match('./index.html');
+                    });
+                })
+        );
+    } else {
+        // Cache-first strategy for CSS, JS, images
+        event.respondWith(
+            caches.match(event.request)
+                .then((response) => {
+                    return response || fetch(event.request)
+                        .then((fetchResponse) => {
+                            // Don't cache external requests
+                            if (!event.request.url.startsWith(self.location.origin)) {
+                                return fetchResponse;
+                            }
+                            // Cache new requests
+                            return caches.open(CACHE_NAME)
+                                .then((cache) => {
+                                    cache.put(event.request, fetchResponse.clone());
+                                    return fetchResponse;
+                                });
+                        });
+                })
+                .catch(() => {
+                    // Offline fallback
                     return caches.match('./index.html');
-                }
-            })
-    );
+                })
+        );
+    }
 });
 
