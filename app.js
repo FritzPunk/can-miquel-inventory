@@ -138,7 +138,11 @@ const translations = {
         cardDiff: 'Card Diff',
         exportCierre: 'Export to Excel',
         noDataExport: 'No data to export',
-        exportSuccess: 'Excel file exported successfully!'
+        exportSuccess: 'Excel file exported successfully!',
+        enterDate: 'Please enter a date',
+        enterAtLeastOneValue: 'Please enter at least one value',
+        closeSavedFor: 'Close saved for',
+        fillAllFields: 'Please fill in all required fields'
     },
     es: {
         export: 'Exportar',
@@ -260,7 +264,11 @@ const translations = {
         cardDiff: 'Dif. Tarjetas',
         exportCierre: 'Exportar a Excel',
         noDataExport: 'No hay datos para exportar',
-        exportSuccess: '¡Archivo Excel exportado correctamente!'
+        exportSuccess: '¡Archivo Excel exportado correctamente!',
+        enterDate: 'Por favor, introduce una fecha',
+        enterAtLeastOneValue: 'Por favor, introduce al menos un valor',
+        closeSavedFor: 'Cierre guardado para',
+        fillAllFields: 'Por favor, completa todos los campos requeridos'
     }
 };
 
@@ -1179,12 +1187,12 @@ function saveCierre() {
     const notes = cierreNotesInput?.value.trim() || '';
     
     if (!date) {
-        alert('Please enter a date');
+        alert(t('enterDate'));
         return;
     }
     
     if (zCash === 0 && zCard === 0 && rCash === 0 && rCard === 0) {
-        alert('Please enter at least one value');
+        alert(t('enterAtLeastOneValue'));
         return;
     }
     
@@ -1228,7 +1236,7 @@ function saveCierre() {
     saveData();
     resetCierreForm();
     renderCierres();
-    alert(`Close saved for ${date}`);
+    alert(`${t('closeSavedFor')} ${date}`);
 }
 
 function resetCierreForm() {
@@ -1378,6 +1386,7 @@ function switchTab(tabName) {
     
     if (tabName === 'inventory') {
         document.getElementById('inventorySection').classList.add('active');
+        renderMermaxChart();
     } else if (tabName === 'reservations') {
         document.getElementById('reservationsSection').classList.add('active');
         renderReservations();
@@ -1512,7 +1521,7 @@ function saveReservation() {
     const notes = reservationNotesInput ? reservationNotesInput.value.trim() : '';
     
     if (!name || !date || !time || !people) {
-        alert('Please fill in all required fields');
+        alert(t('fillAllFields'));
         return;
     }
     
