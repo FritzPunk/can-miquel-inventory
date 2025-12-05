@@ -142,7 +142,11 @@ const translations = {
         enterDate: 'Please enter a date',
         enterAtLeastOneValue: 'Please enter at least one value',
         closeSavedFor: 'Close saved for',
-        fillAllFields: 'Please fill in all required fields'
+        fillAllFields: 'Please fill in all required fields',
+        negativeValue: 'Quantities cannot be negative',
+        invalidNumber: 'Please enter valid numbers',
+        storageFull: 'Storage quota exceeded. Please export your data and clear some items.',
+        dataLarge: 'Warning: Inventory data is very large. Consider exporting a backup.'
     },
     es: {
         export: 'Exportar',
@@ -268,7 +272,11 @@ const translations = {
         enterDate: 'Por favor, introduce una fecha',
         enterAtLeastOneValue: 'Por favor, introduce al menos un valor',
         closeSavedFor: 'Cierre guardado para',
-        fillAllFields: 'Por favor, completa todos los campos requeridos'
+        fillAllFields: 'Por favor, completa todos los campos requeridos',
+        negativeValue: 'Las cantidades no pueden ser negativas',
+        invalidNumber: 'Por favor, introduce números válidos',
+        storageFull: 'Cuota de almacenamiento excedida. Por favor, exporta tus datos y elimina algunos artículos.',
+        dataLarge: 'Advertencia: Los datos del inventario son muy grandes. Considera exportar una copia de seguridad.'
     }
 };
 
@@ -539,10 +547,20 @@ function saveData() {
 
 function saveToLocalStorage() {
     try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(inventoryData));
+        const dataStr = JSON.stringify(inventoryData);
+        if (dataStr.length > 5000000) { // ~5MB limit check
+            console.warn('⚠️ Data too large for localStorage');
+            alert(t('dataLarge'));
+        }
+        localStorage.setItem(STORAGE_KEY, dataStr);
         updateLastSaved();
     } catch (error) {
-        console.error('Error saving to localStorage:', error);
+        console.error('❌ Error saving to localStorage:', error);
+        if (error.name === 'QuotaExceededError') {
+            alert(t('storageFull'));
+        } else {
+            alert('Error saving data: ' + error.message);
+        }
     }
 }
 
@@ -1171,6 +1189,17 @@ function saveItem() {
         return;
     }
     
+    // Validate numeric values
+    if (quantity < 0 || minStock < 0 || weekly < 0) {
+        alert(t('negativeValue'));
+        return;
+    }
+    
+    if (!isFinite(quantity) || !isFinite(minStock) || !isFinite(weekly)) {
+        alert(t('invalidNumber'));
+        return;
+    }
+    
     if (!inventoryData.items) inventoryData.items = [];
     
     if (editingItemId) {
@@ -1336,6 +1365,17 @@ function saveCierre() {
         return;
     }
     
+    // Validate numeric values
+    if (zCash < 0 || zCard < 0 || rCash < 0 || rCard < 0) {
+        alert(t('negativeValue'));
+        return;
+    }
+    
+    if (!isFinite(zCash) || !isFinite(zCard) || !isFinite(rCash) || !isFinite(rCard)) {
+        alert(t('invalidNumber'));
+        return;
+    }
+    
     const totalZ = zCash + zCard;
     const totalR = rCash + rCard;
     const diff = totalZ - totalR;
@@ -1422,7 +1462,8 @@ function exportCierreToExcel() {
     csv += `Total de cierres:,${sorted.length}\n`;
     csv += `Cierres correctos:,${sorted.filter(c => c.status === 'correct').length}\n`;
     csv += `Cierres a revisar:,${sorted.filter(c => c.status === 'review').length}\n`;
-    csv += `Diferencia promedio:,$${(totalDiffSum / sorted.length).toFixed(2)}\n`;
+    const avgDiff = sorted.length > 0 ? (totalDiffSum / sorted.length).toFixed(2) : '0.00';
+    csv += `Diferencia promedio:,$${avgDiff}\n`;
     
     // Create and download file
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1525,13 +1566,16 @@ function switchTab(tabName) {
     });
     
     if (tabName === 'inventory') {
-        document.getElementById('inventorySection').classList.add('active');
+        const invSection = document.getElementById('inventorySection');
+        if (invSection) invSection.classList.add('active');
         renderMermaxChart();
     } else if (tabName === 'reservations') {
-        document.getElementById('reservationsSection').classList.add('active');
+        const resSection = document.getElementById('reservationsSection');
+        if (resSection) resSection.classList.add('active');
         renderReservations();
     } else if (tabName === 'cierre') {
-        document.getElementById('cierreSection').classList.add('active');
+        const cierreSection = document.getElementById('cierreSection');
+        if (cierreSection) cierreSection.classList.add('active');
         renderCierres();
         if (cierreDateInput) cierreDateInput.value = new Date().toISOString().split('T')[0];
         calculateCierre();
