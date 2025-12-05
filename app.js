@@ -1862,12 +1862,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Try Firebase in background (don't block the UI)
     setTimeout(() => {
         updateLoadingStatus('Connecting to server...');
-        if (initFirebase()) {
-            console.log('🔥 Firebase ready, syncing data...');
+        const firebaseInitialized = initFirebase();
+        
+        if (firebaseInitialized) {
+            console.log('🔥 Firebase initialized, syncing data...');
+            // firebaseReady is now true, loadData will use Firebase
             loadData();
-            hideLoadingScreen();
         } else {
-            console.log('📂 Firebase unavailable, using offline mode');
+            console.log('📂 Firebase SDK unavailable, using offline mode');
             if (!hasLocalData) {
                 // No local data and no Firebase, initialize defaults
                 initializeDefaultData();
@@ -1877,7 +1879,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 saveToLocalStorage();
             }
-            hideLoadingScreen();
         }
+        hideLoadingScreen();
     }, 100); // Small delay to ensure UI is ready
 });
