@@ -929,12 +929,23 @@ function renderItems() {
     emptyState.classList.remove('visible');
     inventoryTable.style.display = 'table';
     
+    // iOS fix: Ensure table is visible
+    inventoryTable.style.visibility = 'visible';
+    inventoryTable.style.opacity = '1';
+    
     inventoryBody.innerHTML = '';
+    
+    console.log('📝 Creating', items.length, 'table rows...');
+    
     items.forEach((item, index) => {
         const status = getItemStatus(item);
         const realStock = getRealStock(item);
         const row = document.createElement('tr');
-        row.style.animationDelay = `${index * 0.03}s`;
+        
+        // iOS Safari: Disable animation delays (can cause rendering issues)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        row.style.animationDelay = isIOS ? '0s' : `${index * 0.03}s`;
+        
         row.innerHTML = `
             <td>
                 <div class="item-name">${escapeHtml(item.name)}</div>
@@ -956,12 +967,25 @@ function renderItems() {
         inventoryBody.appendChild(row);
     });
     
-    document.querySelectorAll('.action-btn.edit').forEach(btn => {
-        btn.addEventListener('click', () => openEditItemModal(btn.dataset.id));
-    });
+    console.log('✅ Added', inventoryBody.children.length, 'rows to table');
+    console.log('📊 Table display:', inventoryTable.style.display);
+    console.log('📊 Table visibility:', inventoryTable.style.visibility);
     
-    document.querySelectorAll('.action-btn.delete').forEach(btn => {
-        btn.addEventListener('click', () => openDeleteModal('item', btn.dataset.id));
+    // iOS fix: Force repaint
+    void inventoryBody.offsetHeight;
+    
+    // iOS fix: Use requestAnimationFrame to ensure DOM is updated
+    requestAnimationFrame(() => {
+        console.log('🔄 Reflow triggered, table should be visible');
+        
+        // Attach event listeners after rendering
+        document.querySelectorAll('.action-btn.edit').forEach(btn => {
+            btn.addEventListener('click', () => openEditItemModal(btn.dataset.id));
+        });
+        
+        document.querySelectorAll('.action-btn.delete').forEach(btn => {
+            btn.addEventListener('click', () => openDeleteModal('item', btn.dataset.id));
+        });
     });
 }
 
@@ -1036,6 +1060,7 @@ function renderMermaxChart() {
 }
 
 function selectFamily(familyId) {
+    console.log('🎯 selectFamily called:', familyId);
     currentFamilyId = familyId;
     const family = inventoryData.families.find(f => f.id === familyId);
     
@@ -1047,8 +1072,19 @@ function selectFamily(familyId) {
     }
     
     renderFamilies();
-    renderItems();
-    renderMermaxChart();
+    
+    // iOS fix: Delay rendering to ensure DOM is ready
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+        // On iOS, use setTimeout to ensure rendering happens after layout
+        setTimeout(() => {
+            renderItems();
+            renderMermaxChart();
+        }, 50);
+    } else {
+        renderItems();
+        renderMermaxChart();
+    }
 }
 
 function updateItemCount() {
@@ -1842,10 +1878,19 @@ function setupEventListeners() {
             // Check Firebase status
             const firebaseInfo = firebaseReady ? 'Connected' : 'Not initialized';
             
+            // Check rendering status
+            const tableVisible = inventoryTable ? inventoryTable.style.display : 'not found';
+            const tableRows = inventoryBody ? inventoryBody.children.length : 0;
+            const currentFamily = currentFamilyId ? currentFamilyId : 'None';
+            
             const message = `📊 DATA SOURCES:\n\n` +
                 `🔥 Firebase: ${firebaseInfo}\n` +
                 `💾 LocalStorage: ${localInfo}\n` +
                 `🧠 Current Memory: ${memFamilies} families, ${memItems} items\n\n` +
+                `🎨 RENDERING:\n` +
+                `Current Family: ${currentFamily}\n` +
+                `Table Display: ${tableVisible}\n` +
+                `Table Rows: ${tableRows}\n\n` +
                 `Check browser console for details.`;
             
             alert(message);
@@ -1855,6 +1900,10 @@ function setupEventListeners() {
             console.log('Database Object:', database);
             console.log('LocalStorage Data:', localData);
             console.log('Current inventoryData:', inventoryData);
+            console.log('Current Family ID:', currentFamilyId);
+            console.log('Table Element:', inventoryTable);
+            console.log('Table Body Rows:', inventoryBody?.children.length);
+            console.log('Items for current family:', currentFamilyId ? getItemsForFamily(currentFamilyId) : 'No family selected');
         });
     }
     
@@ -1878,9 +1927,19 @@ function setupEventListeners() {
             
             // Re-render everything
             renderFamilies();
+            
+            // iOS fix: Delay rendering
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
             if (currentFamilyId) {
-                renderItems();
-                renderMermaxChart();
+                if (isIOS) {
+                    setTimeout(() => {
+                        renderItems();
+                        renderMermaxChart();
+                    }, 100);
+                } else {
+                    renderItems();
+                    renderMermaxChart();
+                }
             }
         });
     }
