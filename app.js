@@ -89,7 +89,29 @@ const translations = {
         defaultSeafood: 'Seafood',
         connecting: 'Connecting...',
         connected: 'Connected',
-        offline: 'Offline Mode'
+        offline: 'Offline Mode',
+        
+        // Reservations
+        inventory: 'Inventory',
+        reservations: 'Reservations',
+        addReservation: 'Add Reservation',
+        editReservation: 'Edit Reservation',
+        saveReservation: 'Save Reservation',
+        customerName: 'Customer Name',
+        date: 'Date',
+        time: 'Time',
+        numberOfPeople: 'Number of People',
+        eventType: 'Event Type',
+        phone: 'Phone Number',
+        noEvent: 'Regular Dining',
+        birthday: 'Birthday',
+        anniversary: 'Anniversary',
+        business: 'Business Meal',
+        otherEvent: 'Other Event',
+        reservationNotesPlaceholder: 'Special requests, allergies, etc...',
+        emptyReservations: 'No reservations yet. Add your first reservation!',
+        people: 'people',
+        person: 'person'
     },
     es: {
         export: 'Exportar',
@@ -162,7 +184,29 @@ const translations = {
         defaultSeafood: 'Mariscos',
         connecting: 'Conectando...',
         connected: 'Conectado',
-        offline: 'Modo Offline'
+        offline: 'Modo Offline',
+        
+        // Reservations
+        inventory: 'Inventario',
+        reservations: 'Reservas',
+        addReservation: 'Añadir Reserva',
+        editReservation: 'Editar Reserva',
+        saveReservation: 'Guardar Reserva',
+        customerName: 'Nombre del Cliente',
+        date: 'Fecha',
+        time: 'Hora',
+        numberOfPeople: 'Número de Personas',
+        eventType: 'Tipo de Evento',
+        phone: 'Teléfono',
+        noEvent: 'Cena Regular',
+        birthday: 'Cumpleaños',
+        anniversary: 'Aniversario',
+        business: 'Comida de Negocios',
+        otherEvent: 'Otro Evento',
+        reservationNotesPlaceholder: 'Peticiones especiales, alergias, etc...',
+        emptyReservations: '¡Sin reservas aún. Añade tu primera reserva!',
+        people: 'personas',
+        person: 'persona'
     }
 };
 
@@ -171,13 +215,16 @@ let currentLang = 'en';
 // Data Structure
 let inventoryData = {
     families: [],
-    items: []
+    items: [],
+    reservations: []
 };
 
 let currentFamilyId = null;
 let editingFamilyId = null;
 let editingItemId = null;
+let editingReservationId = null;
 let deleteTarget = null;
+let currentTab = 'inventory';
 
 // DOM Elements - will be initialized after DOM loads
 let familyNav, inventoryBody, currentFamilyName, itemCount, addItemBtn;
@@ -188,6 +235,10 @@ let itemModal, itemModalTitle, itemForm, itemNameInput, itemQuantityInput;
 let itemUnitInput, itemMinStockInput, itemWeeklyInput, itemNotesInput, closeItemModal, cancelItemBtn;
 let deleteModal, deleteMessage, closeDeleteModal, cancelDeleteBtn, confirmDeleteBtn;
 let exportBtn, importBtn, importFile, langToggle, langFlag, langCode;
+let reservationsGrid, reservationsEmpty, reservationCount, addReservationBtn;
+let reservationModal, reservationModalTitle, reservationForm, closeReservationModal, cancelReservationBtn;
+let reservationNameInput, reservationDateInput, reservationTimeInput, reservationPeopleInput;
+let reservationEventInput, reservationPhoneInput, reservationNotesInput;
 
 function initDOMElements() {
     familyNav = document.getElementById('familyNav');
@@ -229,6 +280,22 @@ function initDOMElements() {
     langToggle = document.getElementById('langToggle');
     langFlag = document.getElementById('langFlag');
     langCode = document.getElementById('langCode');
+    reservationsGrid = document.getElementById('reservationsGrid');
+    reservationsEmpty = document.getElementById('reservationsEmpty');
+    reservationCount = document.getElementById('reservationCount');
+    addReservationBtn = document.getElementById('addReservationBtn');
+    reservationModal = document.getElementById('reservationModal');
+    reservationModalTitle = document.getElementById('reservationModalTitle');
+    reservationForm = document.getElementById('reservationForm');
+    closeReservationModal = document.getElementById('closeReservationModal');
+    cancelReservationBtn = document.getElementById('cancelReservationBtn');
+    reservationNameInput = document.getElementById('reservationName');
+    reservationDateInput = document.getElementById('reservationDate');
+    reservationTimeInput = document.getElementById('reservationTime');
+    reservationPeopleInput = document.getElementById('reservationPeople');
+    reservationEventInput = document.getElementById('reservationEvent');
+    reservationPhoneInput = document.getElementById('reservationPhone');
+    reservationNotesInput = document.getElementById('reservationNotes');
 }
 
 // ===== Translation Functions =====
@@ -316,7 +383,8 @@ function saveData() {
         // Convert arrays to objects for Firebase (Firebase doesn't handle empty arrays well)
         const dataToSave = {
             families: {},
-            items: {}
+            items: {},
+            reservations: {}
         };
         
         inventoryData.families.forEach((family, index) => {
@@ -326,6 +394,12 @@ function saveData() {
         inventoryData.items.forEach((item, index) => {
             dataToSave.items[item.id] = item;
         });
+        
+        if (inventoryData.reservations) {
+            inventoryData.reservations.forEach((reservation, index) => {
+                dataToSave.reservations[reservation.id] = reservation;
+            });
+        }
         
         database.ref('inventory').set(dataToSave)
             .then(() => {
@@ -366,7 +440,8 @@ function loadData() {
                 // Convert Firebase objects back to arrays
                 inventoryData.families = data.families ? Object.values(data.families) : [];
                 inventoryData.items = data.items ? Object.values(data.items) : [];
-                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
+                inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
+                console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items,', inventoryData.reservations.length, 'reservations');
             } else {
                 // Database is empty, initialize with defaults
                 console.log('📝 Database empty, initializing...');
@@ -441,7 +516,8 @@ function initializeDefaultData() {
             { id: generateId(), nameKey: 'defaultPantry', icon: '🫒' },
             { id: generateId(), nameKey: 'defaultSeafood', icon: '🦐' }
         ],
-        items: []
+        items: [],
+        reservations: []
     };
 }
 
@@ -730,6 +806,9 @@ function openDeleteModal(type, id) {
         const itemsCount = getItemsForFamily(id).length;
         const itemWord = itemsCount !== 1 ? t('items') : t('item');
         if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(displayName)}</strong>?${itemsCount > 0 ? `<br><br>${t('deleteConfirmFamilyItems')} <strong>${itemsCount} ${itemWord}</strong> ${t('deleteConfirmFamilyItemsIn')}` : ''}`;
+    } else if (type === 'reservation') {
+        const reservation = inventoryData.reservations.find(r => r.id === id);
+        if (deleteMessage) deleteMessage.innerHTML = `Are you sure you want to delete the reservation for <strong>${escapeHtml(reservation.name)}</strong> on ${formatDate(reservation.date)}?`;
     } else {
         const item = inventoryData.items.find(i => i.id === id);
         if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(item.name)}</strong>?`;
@@ -833,15 +912,21 @@ function confirmDelete() {
             if (itemCount) itemCount.textContent = `0 ${t('items')}`;
             if (addItemBtn) addItemBtn.disabled = true;
         }
+        renderFamilies();
+        renderItems();
+        updateItemCount();
+    } else if (deleteTarget.type === 'reservation') {
+        inventoryData.reservations = inventoryData.reservations.filter(r => r.id !== deleteTarget.id);
+        renderReservations();
     } else {
         inventoryData.items = inventoryData.items.filter(i => i.id !== deleteTarget.id);
+        renderFamilies();
+        renderItems();
+        updateItemCount();
     }
     
     saveData();
     closeModal(deleteModal);
-    renderFamilies();
-    renderItems();
-    updateItemCount();
     deleteTarget = null;
 }
 
@@ -902,6 +987,190 @@ function importData(file) {
     reader.readAsText(file);
 }
 
+// ===== Tab Navigation =====
+function switchTab(tabName) {
+    currentTab = tabName;
+    
+    // Update nav tabs
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        if (tab.dataset.tab === tabName) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Update content sections
+    document.querySelectorAll('.content-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    if (tabName === 'inventory') {
+        document.getElementById('inventorySection').classList.add('active');
+    } else if (tabName === 'reservations') {
+        document.getElementById('reservationsSection').classList.add('active');
+        renderReservations();
+    }
+}
+
+// ===== Reservations Functions =====
+function renderReservations() {
+    if (!reservationsGrid || !reservationsEmpty) return;
+    
+    if (!inventoryData.reservations || inventoryData.reservations.length === 0) {
+        reservationsGrid.innerHTML = '';
+        reservationsEmpty.classList.add('visible');
+        if (reservationCount) reservationCount.textContent = `0 ${t('reservations')}`;
+        return;
+    }
+    
+    reservationsEmpty.classList.remove('visible');
+    
+    // Sort by date and time
+    const sortedReservations = [...inventoryData.reservations].sort((a, b) => {
+        const dateA = new Date(`${a.date}T${a.time}`);
+        const dateB = new Date(`${b.date}T${b.time}`);
+        return dateA - dateB;
+    });
+    
+    reservationsGrid.innerHTML = '';
+    sortedReservations.forEach((reservation) => {
+        const card = document.createElement('div');
+        card.className = 'reservation-card';
+        
+        const eventLabel = reservation.event ? t(reservation.event) : '';
+        const peopleWord = reservation.people === 1 ? t('person') : t('people');
+        
+        card.innerHTML = `
+            <div class="reservation-header">
+                <div class="reservation-name">${escapeHtml(reservation.name)}</div>
+                ${reservation.event ? `<span class="reservation-event">${getEventEmoji(reservation.event)} ${eventLabel}</span>` : ''}
+            </div>
+            <div class="reservation-datetime">
+                <div class="reservation-date">📅 ${formatDate(reservation.date)}</div>
+                <div class="reservation-time">🕐 ${reservation.time}</div>
+            </div>
+            <div class="reservation-people">👥 ${reservation.people} ${peopleWord}</div>
+            ${reservation.phone ? `<div class="reservation-phone">📞 ${escapeHtml(reservation.phone)}</div>` : ''}
+            ${reservation.notes ? `<div class="reservation-notes">${escapeHtml(reservation.notes)}</div>` : ''}
+            <div class="reservation-actions">
+                <button class="action-btn edit" data-id="${reservation.id}">✏️</button>
+                <button class="action-btn delete" data-id="${reservation.id}">🗑️</button>
+            </div>
+        `;
+        
+        reservationsGrid.appendChild(card);
+    });
+    
+    if (reservationCount) {
+        const count = inventoryData.reservations.length;
+        reservationCount.textContent = `${count} ${count === 1 ? 'reservation' : 'reservations'}`;
+    }
+    
+    // Add event listeners
+    document.querySelectorAll('.reservation-card .action-btn.edit').forEach(btn => {
+        btn.addEventListener('click', () => openEditReservationModal(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.reservation-card .action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal('reservation', btn.dataset.id));
+    });
+}
+
+function getEventEmoji(eventType) {
+    switch(eventType) {
+        case 'birthday': return '🎂';
+        case 'anniversary': return '💝';
+        case 'business': return '💼';
+        case 'other': return '🎉';
+        default: return '🍽️';
+    }
+}
+
+function formatDate(dateString) {
+    const date = new Date(dateString + 'T00:00:00');
+    const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString(currentLang === 'es' ? 'es-ES' : 'en-GB', options);
+}
+
+function openAddReservationModal() {
+    editingReservationId = null;
+    if (reservationModalTitle) reservationModalTitle.textContent = t('addReservation');
+    if (reservationForm) reservationForm.reset();
+    
+    // Set default date to today
+    if (reservationDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        reservationDateInput.value = today;
+    }
+    
+    openModal(reservationModal);
+    if (reservationNameInput) reservationNameInput.focus();
+}
+
+function openEditReservationModal(reservationId) {
+    editingReservationId = reservationId;
+    const reservation = inventoryData.reservations.find(r => r.id === reservationId);
+    if (!reservation) return;
+    
+    if (reservationModalTitle) reservationModalTitle.textContent = t('editReservation');
+    if (reservationNameInput) reservationNameInput.value = reservation.name;
+    if (reservationDateInput) reservationDateInput.value = reservation.date;
+    if (reservationTimeInput) reservationTimeInput.value = reservation.time;
+    if (reservationPeopleInput) reservationPeopleInput.value = reservation.people;
+    if (reservationEventInput) reservationEventInput.value = reservation.event || '';
+    if (reservationPhoneInput) reservationPhoneInput.value = reservation.phone || '';
+    if (reservationNotesInput) reservationNotesInput.value = reservation.notes || '';
+    
+    openModal(reservationModal);
+    if (reservationNameInput) reservationNameInput.focus();
+}
+
+function saveReservation() {
+    const name = reservationNameInput ? reservationNameInput.value.trim() : '';
+    const date = reservationDateInput ? reservationDateInput.value : '';
+    const time = reservationTimeInput ? reservationTimeInput.value : '';
+    const people = reservationPeopleInput ? parseInt(reservationPeopleInput.value) : 0;
+    const event = reservationEventInput ? reservationEventInput.value : '';
+    const phone = reservationPhoneInput ? reservationPhoneInput.value.trim() : '';
+    const notes = reservationNotesInput ? reservationNotesInput.value.trim() : '';
+    
+    if (!name || !date || !time || !people) {
+        alert('Please fill in all required fields');
+        return;
+    }
+    
+    if (!inventoryData.reservations) inventoryData.reservations = [];
+    
+    if (editingReservationId) {
+        const reservation = inventoryData.reservations.find(r => r.id === editingReservationId);
+        if (reservation) {
+            reservation.name = name;
+            reservation.date = date;
+            reservation.time = time;
+            reservation.people = people;
+            reservation.event = event;
+            reservation.phone = phone;
+            reservation.notes = notes;
+        }
+    } else {
+        inventoryData.reservations.push({
+            id: generateId(),
+            name,
+            date,
+            time,
+            people,
+            event,
+            phone,
+            notes
+        });
+    }
+    
+    saveData();
+    closeModal(reservationModal);
+    renderReservations();
+}
+
 // ===== Helper Functions =====
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -918,32 +1187,49 @@ function formatNumber(num) {
 
 // ===== Event Listeners =====
 function setupEventListeners() {
+    // Tab navigation
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    });
+    
+    // Family events
     if (addFamilyBtn) addFamilyBtn.addEventListener('click', openAddFamilyModal);
     if (closeFamilyModal) closeFamilyModal.addEventListener('click', () => closeModal(familyModal));
     if (cancelFamilyBtn) cancelFamilyBtn.addEventListener('click', () => closeModal(familyModal));
     if (familyForm) familyForm.addEventListener('submit', (e) => { e.preventDefault(); saveFamily(); });
 
+    // Item events
     if (addItemBtn) addItemBtn.addEventListener('click', openAddItemModal);
     if (closeItemModal) closeItemModal.addEventListener('click', () => closeModal(itemModal));
     if (cancelItemBtn) cancelItemBtn.addEventListener('click', () => closeModal(itemModal));
     if (itemForm) itemForm.addEventListener('submit', (e) => { e.preventDefault(); saveItem(); });
 
+    // Reservation events
+    if (addReservationBtn) addReservationBtn.addEventListener('click', openAddReservationModal);
+    if (closeReservationModal) closeReservationModal.addEventListener('click', () => closeModal(reservationModal));
+    if (cancelReservationBtn) cancelReservationBtn.addEventListener('click', () => closeModal(reservationModal));
+    if (reservationForm) reservationForm.addEventListener('submit', (e) => { e.preventDefault(); saveReservation(); });
+
+    // Delete modal
     if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
     if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => closeModal(deleteModal));
     if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmDelete);
 
-    [familyModal, itemModal, deleteModal].forEach(modal => {
+    // Close modals on overlay click
+    [familyModal, itemModal, deleteModal, reservationModal].forEach(modal => {
         if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
     });
 
+    // Close modals on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            [familyModal, itemModal, deleteModal].forEach(modal => {
+            [familyModal, itemModal, deleteModal, reservationModal].forEach(modal => {
                 if (modal && modal.classList.contains('active')) closeModal(modal);
             });
         }
     });
 
+    // Other events
     if (searchInput) searchInput.addEventListener('input', renderItems);
     if (exportBtn) exportBtn.addEventListener('click', exportData);
     if (importBtn) importBtn.addEventListener('click', () => importFile && importFile.click());

@@ -29,8 +29,17 @@
             <div class="logo">
                 <span class="logo-icon">🍽️</span>
                 <h1>Can Miquel</h1>
-                <span class="subtitle">Inventory Management</span>
             </div>
+            <nav class="main-nav">
+                <button class="nav-tab active" data-tab="inventory">
+                    <span class="tab-icon">📦</span>
+                    <span data-i18n="inventory">Inventory</span>
+                </button>
+                <button class="nav-tab" data-tab="reservations">
+                    <span class="tab-icon">📅</span>
+                    <span data-i18n="reservations">Reservations</span>
+                </button>
+            </nav>
             <div class="header-actions">
                 <button class="btn btn-secondary" id="exportBtn" title="Export Data">
                     <span class="btn-icon">📥</span> <span data-i18n="export">Export</span>
@@ -49,6 +58,8 @@
         </header>
 
         <main class="main-content">
+            <!-- Inventory Section -->
+            <div class="content-section active" id="inventorySection">
             <aside class="sidebar">
                 <div class="sidebar-header">
                     <h2 data-i18n="families">Families</h2>
@@ -99,6 +110,33 @@
                     </div>
                 </div>
             </section>
+            </div>
+            <!-- End Inventory Section -->
+
+            <!-- Reservations Section -->
+            <div class="content-section" id="reservationsSection">
+                <div class="reservations-container">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <h2 data-i18n="reservations">Reservations</h2>
+                            <span class="item-count" id="reservationCount">0 reservations</span>
+                        </div>
+                        <button class="btn btn-primary" id="addReservationBtn">
+                            <span class="btn-icon">+</span> <span data-i18n="addReservation">Add Reservation</span>
+                        </button>
+                    </div>
+
+                    <div class="reservations-grid" id="reservationsGrid">
+                        <!-- Reservations will be rendered here -->
+                    </div>
+
+                    <div class="empty-state visible" id="reservationsEmpty">
+                        <span class="empty-icon">📅</span>
+                        <p data-i18n="emptyReservations">No reservations yet. Add your first reservation!</p>
+                    </div>
+                </div>
+            </div>
+            <!-- End Reservations Section -->
         </main>
 
         <footer class="footer">
@@ -179,6 +217,60 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelItemBtn" data-i18n="cancel">Cancel</button>
                     <button type="submit" class="btn btn-primary" data-i18n="saveItem">Save Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Reservation Modal -->
+    <div class="modal-overlay" id="reservationModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="reservationModalTitle" data-i18n="addReservation">Add Reservation</h3>
+                <button class="modal-close" id="closeReservationModal">&times;</button>
+            </div>
+            <form id="reservationForm">
+                <div class="form-group">
+                    <label for="reservationName" data-i18n="customerName">Customer Name</label>
+                    <input type="text" id="reservationName" required placeholder="John Doe">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reservationDate" data-i18n="date">Date</label>
+                        <input type="date" id="reservationDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="reservationTime" data-i18n="time">Time</label>
+                        <input type="time" id="reservationTime" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="reservationPeople" data-i18n="numberOfPeople">Number of People</label>
+                        <input type="number" id="reservationPeople" required min="1" max="50" placeholder="2">
+                    </div>
+                    <div class="form-group">
+                        <label for="reservationEvent" data-i18n="eventType">Event Type</label>
+                        <select id="reservationEvent">
+                            <option value="" data-i18n="noEvent">Regular Dining</option>
+                            <option value="birthday" data-i18n="birthday">Birthday</option>
+                            <option value="anniversary" data-i18n="anniversary">Anniversary</option>
+                            <option value="business" data-i18n="business">Business Meal</option>
+                            <option value="other" data-i18n="otherEvent">Other Event</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="reservationPhone" data-i18n="phone">Phone Number</label>
+                    <input type="tel" id="reservationPhone" placeholder="+34 123 456 789">
+                </div>
+                <div class="form-group">
+                    <label for="reservationNotes" data-i18n="notesLabel">Notes (optional)</label>
+                    <textarea id="reservationNotes" rows="2" data-i18n-placeholder="reservationNotesPlaceholder" placeholder="Special requests, allergies, etc..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelReservationBtn" data-i18n="cancel">Cancel</button>
+                    <button type="submit" class="btn btn-primary" data-i18n="saveReservation">Save Reservation</button>
                 </div>
             </form>
         </div>
