@@ -652,6 +652,9 @@ function loadData() {
             console.log('🎨 Rendering families...');
             renderFamilies();
             
+            // iOS fix: Always ensure a family is selected
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            
             // Select first family if none selected or if current doesn't exist
             if (inventoryData.families.length > 0) {
                 const currentExists = currentFamilyId && inventoryData.families.find(f => f.id === currentFamilyId);
@@ -659,12 +662,27 @@ function loadData() {
                 
                 if (!currentExists) {
                     console.log('Selecting first family:', inventoryData.families[0].id);
-                    selectFamily(inventoryData.families[0].id);
+                    if (isIOS) {
+                        // iOS: Delay family selection to ensure DOM is ready
+                        setTimeout(() => {
+                            selectFamily(inventoryData.families[0].id);
+                        }, 150);
+                    } else {
+                        selectFamily(inventoryData.families[0].id);
+                    }
                 } else {
                     console.log('Rendering existing family');
-                    renderItems();
-                    updateItemCount();
-                    renderMermaxChart();
+                    if (isIOS) {
+                        setTimeout(() => {
+                            renderItems();
+                            updateItemCount();
+                            renderMermaxChart();
+                        }, 100);
+                    } else {
+                        renderItems();
+                        updateItemCount();
+                        renderMermaxChart();
+                    }
                     const family = inventoryData.families.find(f => f.id === currentFamilyId);
                     if (family && currentFamilyName) {
                         currentFamilyName.textContent = `${family.icon || '📦'} ${getFamilyName(family)}`;
@@ -1881,17 +1899,19 @@ function setupEventListeners() {
             // Check rendering status
             const tableVisible = inventoryTable ? inventoryTable.style.display : 'not found';
             const tableRows = inventoryBody ? inventoryBody.children.length : 0;
-            const currentFamily = currentFamilyId ? currentFamilyId : 'None';
+            const currentFamily = currentFamilyId || 'None';
+            const familyItems = currentFamilyId ? getItemsForFamily(currentFamilyId).length : 0;
             
             const message = `📊 DATA SOURCES:\n\n` +
                 `🔥 Firebase: ${firebaseInfo}\n` +
                 `💾 LocalStorage: ${localInfo}\n` +
                 `🧠 Current Memory: ${memFamilies} families, ${memItems} items\n\n` +
                 `🎨 RENDERING:\n` +
-                `Current Family: ${currentFamily}\n` +
+                `Selected Family: ${currentFamily}\n` +
+                `Items in Family: ${familyItems}\n` +
                 `Table Display: ${tableVisible}\n` +
-                `Table Rows: ${tableRows}\n\n` +
-                `Check browser console for details.`;
+                `Rows in Table: ${tableRows}\n\n` +
+                `Tap REFRESH button to force re-render`;
             
             alert(message);
             
@@ -1904,6 +1924,13 @@ function setupEventListeners() {
             console.log('Table Element:', inventoryTable);
             console.log('Table Body Rows:', inventoryBody?.children.length);
             console.log('Items for current family:', currentFamilyId ? getItemsForFamily(currentFamilyId) : 'No family selected');
+            
+            // Auto-select first family if none selected
+            if (!currentFamilyId && inventoryData.families.length > 0) {
+                console.log('⚠️ No family selected, auto-selecting first family');
+                alert('No family selected! Auto-selecting first family...');
+                selectFamily(inventoryData.families[0].id);
+            }
         });
     }
     
