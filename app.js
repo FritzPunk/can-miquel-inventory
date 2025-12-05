@@ -460,22 +460,23 @@ function initFirebase() {
         const app = firebase.initializeApp(firebaseConfig);
         database = firebase.database();
         
-        // Set firebaseReady immediately (synchronous)
-        // Firebase will handle connection and reconnection automatically
+        // CRITICAL: Set firebaseReady SYNCHRONOUSLY (before any async operations)
+        // This prevents race condition where function returns true but firebaseReady is false
         firebaseReady = true;
-        console.log('✅ Firebase initialized');
+        console.log('✅ Firebase initialized, firebaseReady = true');
         
-        // Test connection in background (for logging only, doesn't affect functionality)
+        // Test connection in background (for logging/monitoring only)
         const testRef = database.ref('.info/connected');
         testRef.once('value').then((snap) => {
             if (snap.val() === true) {
                 console.log('✅ Firebase connection verified - online');
                 database.goOnline();
             } else {
-                console.log('ℹ️ Firebase connection pending - will auto-connect');
+                console.log('ℹ️ Firebase offline - will auto-reconnect');
             }
         }).catch((error) => {
-            console.warn('⚠️ Firebase connection test error (will retry automatically):', error.message);
+            console.warn('⚠️ Firebase connection test error:', error.message);
+            console.log('ℹ️ Firebase will retry connection automatically');
         });
         
         return true;
@@ -551,17 +552,24 @@ function loadData() {
     if (firebaseReady && database) {
         if (lastSavedSpan) lastSavedSpan.textContent = t('connecting');
         
+        // CRITICAL: Backup localStorage data BEFORE clearing
+        const localBackup = localStorage.getItem(STORAGE_KEY);
+        console.log('💾 Backed up localStorage data');
+        
         // Set a timeout for iOS (fallback to localStorage if Firebase takes too long)
         let firebaseLoaded = false;
         const timeoutId = setTimeout(() => {
             if (!firebaseLoaded) {
-                console.warn('⏱️ Firebase timeout, falling back to localStorage');
+                console.warn('⏱️ Firebase timeout, restoring from backup');
+                // Restore the backup if Firebase fails
+                if (localBackup) {
+                    localStorage.setItem(STORAGE_KEY, localBackup);
+                }
                 loadFromLocalStorage();
             }
         }, 5000); // 5 second timeout
         
-        // Clear any old localStorage data when using Firebase
-        localStorage.removeItem(STORAGE_KEY);
+        // DON'T clear localStorage yet - wait until Firebase data is confirmed loaded
         
         // Listen for real-time updates
         database.ref('inventory').on('value', (snapshot) => {
@@ -580,19 +588,46 @@ function loadData() {
                     inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
                     inventoryData.cierres = data.cierres ? Object.values(data.cierres) : [];
                     
-                    console.log('📦 Loaded:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
-                    console.log('📦 Families:', inventoryData.families);
-                    console.log('📦 Items:', inventoryData.items);
+                    console.log('📦 Loaded from Firebase:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
+                    
+                    // Only clear localStorage after successful Firebase load
+                    localStorage.removeItem(STORAGE_KEY);
+                    console.log('✅ Cleared localStorage (data in Firebase)');
                 } catch (error) {
                     console.error('❌ Error parsing Firebase data:', error);
-                    initializeDefaultData();
+                    console.log('⚠️ Attempting to load from localStorage backup...');
+                    loadFromLocalStorage();
+                    return;
                 }
             } else {
-                // Database is empty, initialize with defaults
-                console.log('📝 Database empty, initializing...');
-                initializeDefaultData();
-                saveData();
-                return; // saveData will trigger another 'value' event
+                // Database is empty - check if localStorage has data to migrate
+                console.log('📝 Firebase database is empty');
+                const localData = localStorage.getItem(STORAGE_KEY);
+                
+                if (localData) {
+                    try {
+                        console.log('💾 Found localStorage data, migrating to Firebase...');
+                        const parsed = JSON.parse(localData);
+                        inventoryData = parsed;
+                        migrateDefaultFamilies();
+                        
+                        // Save to Firebase
+                        saveData();
+                        console.log('✅ Migrated localStorage data to Firebase');
+                        return; // saveData will trigger another 'value' event
+                    } catch (error) {
+                        console.error('❌ Error parsing localStorage data:', error);
+                        initializeDefaultData();
+                        saveData();
+                        return;
+                    }
+                } else {
+                    // No data anywhere, initialize with defaults
+                    console.log('📝 No data found, initializing defaults...');
+                    initializeDefaultData();
+                    saveData();
+                    return;
+                }
             }
             
             // Always re-render everything
@@ -1735,6 +1770,49 @@ function setupEventListeners() {
         if (e.target.files.length > 0) { importData(e.target.files[0]); e.target.value = ''; }
     });
     if (langToggle) langToggle.addEventListener('click', toggleLanguage);
+    
+    // Check Data button - diagnostic tool
+    const checkDataBtn = document.getElementById('checkDataBtn');
+    if (checkDataBtn) {
+        checkDataBtn.addEventListener('click', () => {
+            console.log('🔍 Data Source Check');
+            
+            // Check localStorage
+            const localData = localStorage.getItem(STORAGE_KEY);
+            let localInfo = 'None';
+            if (localData) {
+                try {
+                    const parsed = JSON.parse(localData);
+                    const families = parsed.families?.length || 0;
+                    const items = parsed.items?.length || 0;
+                    localInfo = `${families} families, ${items} items`;
+                } catch (e) {
+                    localInfo = 'Corrupted';
+                }
+            }
+            
+            // Check current memory
+            const memFamilies = inventoryData.families?.length || 0;
+            const memItems = inventoryData.items?.length || 0;
+            
+            // Check Firebase status
+            const firebaseInfo = firebaseReady ? 'Connected' : 'Not initialized';
+            
+            const message = `📊 DATA SOURCES:\n\n` +
+                `🔥 Firebase: ${firebaseInfo}\n` +
+                `💾 LocalStorage: ${localInfo}\n` +
+                `🧠 Current Memory: ${memFamilies} families, ${memItems} items\n\n` +
+                `Check browser console for details.`;
+            
+            alert(message);
+            
+            console.log('📊 DETAILED DATA CHECK:');
+            console.log('Firebase Ready:', firebaseReady);
+            console.log('Database Object:', database);
+            console.log('LocalStorage Data:', localData);
+            console.log('Current inventoryData:', inventoryData);
+        });
+    }
     
     // Refresh button
     const refreshBtn = document.getElementById('refreshBtn');
