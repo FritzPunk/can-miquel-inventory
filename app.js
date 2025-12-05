@@ -90,6 +90,8 @@ const translations = {
         connecting: 'Connecting...',
         connected: 'Connected',
         offline: 'Offline Mode',
+        mermaxByFamily: 'Weekly Waste by Family (Mermax)',
+        noMermaxData: 'No waste data yet. Add mermax values to items.',
         
         // Reservations
         inventory: 'Inventory',
@@ -210,6 +212,8 @@ const translations = {
         connecting: 'Conectando...',
         connected: 'Conectado',
         offline: 'Modo Offline',
+        mermaxByFamily: 'Desperdicio Semanal por Familia (Mermax)',
+        noMermaxData: 'Sin datos de desperdicio aún. Añade valores mermax a los artículos.',
         
         // Reservations
         inventory: 'Inventario',
@@ -538,6 +542,7 @@ function loadData() {
                 } else {
                     renderItems();
                     updateItemCount();
+                    renderMermaxChart();
                     const family = inventoryData.families.find(f => f.id === currentFamilyId);
                     if (family && currentFamilyName) {
                         currentFamilyName.textContent = `${family.icon || '📦'} ${getFamilyName(family)}`;
@@ -545,6 +550,7 @@ function loadData() {
                 }
             } else {
                 renderItems();
+                renderMermaxChart();
             }
             
             if (lastSavedSpan) lastSavedSpan.textContent = '✓ ' + t('connected');
@@ -571,6 +577,7 @@ function loadFromLocalStorage() {
         
         renderFamilies();
         renderItems();
+        renderMermaxChart();
         
         if (inventoryData.families.length > 0) {
             selectFamily(inventoryData.families[0].id);
@@ -792,6 +799,61 @@ function renderItems() {
     });
 }
 
+// ===== Mermax Chart =====
+function renderMermaxChart() {
+    const chartElement = document.getElementById('mermaxChart');
+    if (!chartElement) return;
+    
+    // Calculate mermax totals by family
+    const familyMermax = {};
+    let totalMermax = 0;
+    
+    inventoryData.families.forEach(family => {
+        const items = getItemsForFamily(family.id);
+        const familyTotal = items.reduce((sum, item) => {
+            return sum + (parseFloat(item.weekly) || 0);
+        }, 0);
+        
+        if (familyTotal > 0) {
+            familyMermax[family.id] = {
+                name: getFamilyName(family),
+                icon: family.icon || '📦',
+                total: familyTotal
+            };
+            totalMermax += familyTotal;
+        }
+    });
+    
+    // Sort by total (descending)
+    const sortedFamilies = Object.entries(familyMermax)
+        .sort((a, b) => b[1].total - a[1].total);
+    
+    // Render chart
+    if (sortedFamilies.length === 0) {
+        chartElement.innerHTML = `<div class="chart-no-data">${t('noMermaxData')}</div>`;
+        return;
+    }
+    
+    const maxValue = sortedFamilies[0][1].total;
+    
+    chartElement.innerHTML = sortedFamilies.map(([familyId, data]) => {
+        const percentage = (data.total / maxValue) * 100;
+        return `
+            <div class="chart-bar-container">
+                <div class="chart-label">
+                    <span class="chart-label-icon">${data.icon}</span>
+                    <span>${escapeHtml(data.name)}</span>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar" style="width: ${percentage}%;">
+                        <span class="chart-bar-value">${formatNumber(data.total)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
 function selectFamily(familyId) {
     currentFamilyId = familyId;
     const family = inventoryData.families.find(f => f.id === familyId);
@@ -805,6 +867,7 @@ function selectFamily(familyId) {
     
     renderFamilies();
     renderItems();
+    renderMermaxChart();
 }
 
 function updateItemCount() {
@@ -975,6 +1038,7 @@ function saveItem() {
     renderItems();
     updateItemCount();
     renderFamilies();
+    renderMermaxChart();
 }
 
 function confirmDelete() {
@@ -993,6 +1057,7 @@ function confirmDelete() {
         renderFamilies();
         renderItems();
         updateItemCount();
+        renderMermaxChart();
     } else if (deleteTarget.type === 'reservation') {
         inventoryData.reservations = inventoryData.reservations.filter(r => r.id !== deleteTarget.id);
         renderReservations();
@@ -1001,6 +1066,7 @@ function confirmDelete() {
         renderFamilies();
         renderItems();
         updateItemCount();
+        renderMermaxChart();
     }
     
     saveData();
