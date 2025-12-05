@@ -31,6 +31,7 @@ const translations = {
         quantity: 'Quantity',
         unit: 'Unit',
         minStock: 'Min. Stock',
+        weekly: 'Weekly',
         status: 'Status',
         actions: 'Actions',
         inStock: 'In Stock',
@@ -49,6 +50,7 @@ const translations = {
         itemNameLabel: 'Item Name',
         itemNamePlaceholder: 'e.g., Olive Oil, Chicken Breast...',
         minStockLabel: 'Minimum Stock (alert threshold)',
+        weeklyLabel: 'Weekly Amount',
         notesLabel: 'Notes (optional)',
         notesPlaceholder: 'Any additional notes...',
         saveItem: 'Save Item',
@@ -98,6 +100,7 @@ const translations = {
         quantity: 'Cantidad',
         unit: 'Unidad',
         minStock: 'Stock Mín.',
+        weekly: 'Semanal',
         status: 'Estado',
         actions: 'Acciones',
         inStock: 'En Stock',
@@ -116,6 +119,7 @@ const translations = {
         itemNameLabel: 'Nombre del Artículo',
         itemNamePlaceholder: 'ej., Aceite de Oliva, Pechuga de Pollo...',
         minStockLabel: 'Stock Mínimo (umbral de alerta)',
+        weeklyLabel: 'Cantidad Semanal',
         notesLabel: 'Notas (opcional)',
         notesPlaceholder: 'Notas adicionales...',
         saveItem: 'Guardar Artículo',
@@ -173,7 +177,7 @@ let searchInput, emptyState, inventoryTable, lastSavedSpan;
 let familyModal, familyModalTitle, familyForm, familyNameInput, familyIconInput;
 let addFamilyBtn, closeFamilyModal, cancelFamilyBtn;
 let itemModal, itemModalTitle, itemForm, itemNameInput, itemQuantityInput;
-let itemUnitInput, itemMinStockInput, itemNotesInput, closeItemModal, cancelItemBtn;
+let itemUnitInput, itemMinStockInput, itemWeeklyInput, itemNotesInput, closeItemModal, cancelItemBtn;
 let deleteModal, deleteMessage, closeDeleteModal, cancelDeleteBtn, confirmDeleteBtn;
 let exportBtn, importBtn, importFile, langToggle, langFlag, langCode;
 
@@ -202,6 +206,7 @@ function initDOMElements() {
     itemQuantityInput = document.getElementById('itemQuantity');
     itemUnitInput = document.getElementById('itemUnit');
     itemMinStockInput = document.getElementById('itemMinStock');
+    itemWeeklyInput = document.getElementById('itemWeekly');
     itemNotesInput = document.getElementById('itemNotes');
     closeItemModal = document.getElementById('closeItemModal');
     cancelItemBtn = document.getElementById('cancelItemBtn');
@@ -595,6 +600,7 @@ function renderItems() {
             <td class="quantity-cell">${formatNumber(item.quantity)}</td>
             <td class="unit-cell">${escapeHtml(item.unit)}</td>
             <td>${item.minStock ? formatNumber(item.minStock) : '-'}</td>
+            <td>${item.weekly ? formatNumber(item.weekly) : '-'}</td>
             <td><span class="status-badge ${status}">${getStatusLabel(status)}</span></td>
             <td>
                 <div class="action-buttons">
@@ -692,6 +698,7 @@ function openEditItemModal(itemId) {
     if (itemQuantityInput) itemQuantityInput.value = item.quantity;
     if (itemUnitInput) itemUnitInput.value = item.unit;
     if (itemMinStockInput) itemMinStockInput.value = item.minStock || '';
+    if (itemWeeklyInput) itemWeeklyInput.value = item.weekly || '';
     if (itemNotesInput) itemNotesInput.value = item.notes || '';
     openModal(itemModal);
     if (itemNameInput) itemNameInput.focus();
@@ -756,6 +763,7 @@ function saveItem() {
     const quantity = itemQuantityInput ? parseFloat(itemQuantityInput.value) || 0 : 0;
     const unit = itemUnitInput ? itemUnitInput.value : 'units';
     const minStock = itemMinStockInput ? parseFloat(itemMinStockInput.value) || 0 : 0;
+    const weekly = itemWeeklyInput ? parseFloat(itemWeeklyInput.value) || 0 : 0;
     const notes = itemNotesInput ? itemNotesInput.value.trim() : '';
     
     if (!name) {
@@ -772,6 +780,7 @@ function saveItem() {
             item.quantity = quantity;
             item.unit = unit;
             item.minStock = minStock;
+            item.weekly = weekly;
             item.notes = notes;
         }
     } else {
@@ -782,6 +791,7 @@ function saveItem() {
             quantity,
             unit,
             minStock,
+            weekly,
             notes
         });
     }
