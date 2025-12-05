@@ -1273,11 +1273,17 @@ form {
         flex-direction: column;
     }
     
+    .content-section {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+    
     .sidebar {
         width: 100%;
         max-height: 200px;
         border-right: none;
         border-bottom: 1px solid var(--color-border);
+        flex-shrink: 0;
     }
     
     .family-nav {
@@ -1295,6 +1301,11 @@ form {
     
     .inventory-panel {
         padding: 1rem;
+        flex: 1 1 auto;
+        min-height: 500px;
+        overflow-y: auto;
+        width: 100%;
+        display: flex !important;
     }
     
     .panel-header {
@@ -1304,6 +1315,10 @@ form {
     
     .inventory-table-wrapper {
         border-radius: var(--radius-md);
+        min-height: 400px;
+        display: block !important;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
     
     .form-row {
