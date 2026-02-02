@@ -146,7 +146,45 @@ const translations = {
         negativeValue: 'Quantities cannot be negative',
         invalidNumber: 'Please enter valid numbers',
         storageFull: 'Storage quota exceeded. Please export your data and clear some items.',
-        dataLarge: 'Warning: Inventory data is very large. Consider exporting a backup.'
+        dataLarge: 'Warning: Inventory data is very large. Consider exporting a backup.',
+        
+        // Albaranes
+        albaranes: 'Albaranes',
+        addAlbaran: 'Add Albaran',
+        editAlbaran: 'Edit Albaran',
+        saveAlbaran: 'Save Albaran',
+        companyName: 'Company Name',
+        companyNamePlaceholder: 'e.g., Supplier ABC, Distributor XYZ...',
+        albaranNumber: 'Albaran Number',
+        albaranNumberPlaceholder: 'e.g., ALB-2024-001',
+        albaranDate: 'Date',
+        amount: 'Amount',
+        amountPlaceholder: '0.00',
+        emptyAlbaranes: 'No albaranes yet. Add your first albaran!',
+        deleteConfirmAlbaran: 'Are you sure you want to delete this albaran?',
+        spendingByCompany: 'Spending by Company',
+        noCompanyData: 'No spending data yet. Add albaranes to see company spending.',
+        totalSpent: 'Total Spent',
+        albaranesCount: 'Albaranes',
+        spendingOverTime: 'Spending Over Time',
+        fromDate: 'From Date',
+        toDate: 'To Date',
+        resetDates: 'Reset',
+        total: 'Total',
+        year: 'Year',
+        month: 'Month',
+        week: 'Week',
+        day: 'Day',
+        noSpendingData: 'No spending data for the selected period.',
+        consumption: 'Consumption',
+        scanAlbaran: 'Scan Albaran',
+        scannerInstructions: 'Position the barcode/QR code within the frame',
+        scannerReady: 'Ready to scan...',
+        stopScanner: 'Stop Scanner',
+        scanSuccess: 'Albaran scanned successfully!',
+        scanError: 'Error scanning. Please try again.',
+        noCamera: 'Camera access denied or not available.',
+        parsingData: 'Parsing scanned data...'
     },
     es: {
         export: 'Exportar',
@@ -276,7 +314,45 @@ const translations = {
         negativeValue: 'Las cantidades no pueden ser negativas',
         invalidNumber: 'Por favor, introduce números válidos',
         storageFull: 'Cuota de almacenamiento excedida. Por favor, exporta tus datos y elimina algunos artículos.',
-        dataLarge: 'Advertencia: Los datos del inventario son muy grandes. Considera exportar una copia de seguridad.'
+        dataLarge: 'Advertencia: Los datos del inventario son muy grandes. Considera exportar una copia de seguridad.',
+        
+        // Albaranes
+        albaranes: 'Albaranes',
+        addAlbaran: 'Añadir Albarán',
+        editAlbaran: 'Editar Albarán',
+        saveAlbaran: 'Guardar Albarán',
+        companyName: 'Nombre de la Empresa',
+        companyNamePlaceholder: 'ej., Proveedor ABC, Distribuidor XYZ...',
+        albaranNumber: 'Número de Albarán',
+        albaranNumberPlaceholder: 'ej., ALB-2024-001',
+        albaranDate: 'Fecha',
+        amount: 'Importe',
+        amountPlaceholder: '0,00',
+        emptyAlbaranes: '¡Sin albaranes aún. Añade tu primer albarán!',
+        deleteConfirmAlbaran: '¿Estás seguro de que quieres eliminar este albarán?',
+        spendingByCompany: 'Gasto por Empresa',
+        noCompanyData: 'Aún no hay datos de gasto. Añade albaranes para ver el gasto por empresa.',
+        totalSpent: 'Total Gastado',
+        albaranesCount: 'Albaranes',
+        spendingOverTime: 'Gasto en el Tiempo',
+        fromDate: 'Fecha Desde',
+        toDate: 'Fecha Hasta',
+        resetDates: 'Restablecer',
+        total: 'Total',
+        year: 'Año',
+        month: 'Mes',
+        week: 'Semana',
+        day: 'Día',
+        noSpendingData: 'No hay datos de gasto para el período seleccionado.',
+        consumption: 'Consumo',
+        scanAlbaran: 'Escanear Albarán',
+        scannerInstructions: 'Posiciona el código de barras/QR dentro del marco',
+        scannerReady: 'Listo para escanear...',
+        stopScanner: 'Detener Escáner',
+        scanSuccess: '¡Albarán escaneado con éxito!',
+        scanError: 'Error al escanear. Por favor, inténtalo de nuevo.',
+        noCamera: 'Acceso a la cámara denegado o no disponible.',
+        parsingData: 'Analizando datos escaneados...'
     }
 };
 
@@ -287,13 +363,15 @@ let inventoryData = {
     families: [],
     items: [],
     reservations: [],
-    cierres: []
+    cierres: [],
+    albaranes: []
 };
 
 let currentFamilyId = null;
 let editingFamilyId = null;
 let editingItemId = null;
 let editingReservationId = null;
+let editingAlbaranId = null;
 let deleteTarget = null;
 let currentTab = 'inventory';
 
@@ -313,6 +391,16 @@ let reservationEventInput, reservationPhoneInput, reservationNotesInput;
 let cierreCards, cierreEmpty, addCierreBtn, exportCierreBtn, cierreForm, cierreDateInput;
 let cierreZCashInput, cierreZCardInput, realCashInput, realCardInput, cierreNotesInput;
 let totalZCloseSpan, totalRealSpan, totalDifferenceSpan, cierreStatusDiv;
+let albaranesGrid, albaranesEmpty, albaranesCount, addAlbaranBtn;
+let albaranModal, albaranModalTitle, albaranForm, closeAlbaranModal, cancelAlbaranBtn;
+let albaranCompanyInput, albaranNumberInput, albaranDateInput, albaranAmountInput, albaranNotesInput;
+let albaranFromDate, albaranToDate, resetDateFilterBtn;
+let spendingTimeChart, spendingTimeChartContainer;
+let currentPeriod = 'total';
+let scanAlbaranBtn, scannerModal, closeScannerModal, stopScannerBtn;
+let scannerVideo, scannerCanvas, scannerStatus;
+let scannerStream = null;
+let codeReader = null;
 
 function initDOMElements() {
     familyNav = document.getElementById('familyNav');
@@ -385,6 +473,32 @@ function initDOMElements() {
     totalRealSpan = document.getElementById('totalReal');
     totalDifferenceSpan = document.getElementById('totalDifference');
     cierreStatusDiv = document.getElementById('cierreStatus');
+    albaranesGrid = document.getElementById('albaranesGrid');
+    albaranesEmpty = document.getElementById('albaranesEmpty');
+    albaranesCount = document.getElementById('albaranesCount');
+    addAlbaranBtn = document.getElementById('addAlbaranBtn');
+    albaranModal = document.getElementById('albaranModal');
+    albaranModalTitle = document.getElementById('albaranModalTitle');
+    albaranForm = document.getElementById('albaranForm');
+    closeAlbaranModal = document.getElementById('closeAlbaranModal');
+    cancelAlbaranBtn = document.getElementById('cancelAlbaranBtn');
+    albaranCompanyInput = document.getElementById('albaranCompany');
+    albaranNumberInput = document.getElementById('albaranNumber');
+    albaranDateInput = document.getElementById('albaranDate');
+    albaranAmountInput = document.getElementById('albaranAmount');
+    albaranNotesInput = document.getElementById('albaranNotes');
+    albaranFromDate = document.getElementById('albaranFromDate');
+    albaranToDate = document.getElementById('albaranToDate');
+    resetDateFilterBtn = document.getElementById('resetDateFilterBtn');
+    spendingTimeChart = document.getElementById('spendingTimeChart');
+    spendingTimeChartContainer = document.getElementById('spendingTimeChartContainer');
+    scanAlbaranBtn = document.getElementById('scanAlbaranBtn');
+    scannerModal = document.getElementById('scannerModal');
+    closeScannerModal = document.getElementById('closeScannerModal');
+    stopScannerBtn = document.getElementById('stopScannerBtn');
+    scannerVideo = document.getElementById('scannerVideo');
+    scannerCanvas = document.getElementById('scannerCanvas');
+    scannerStatus = document.getElementById('scannerStatus');
 }
 
 // ===== Translation Functions =====
@@ -508,7 +622,8 @@ function saveData() {
             families: {},
             items: {},
             reservations: {},
-            cierres: {}
+            cierres: {},
+            albaranes: {}
         };
         
         inventoryData.families.forEach((family, index) => {
@@ -528,6 +643,12 @@ function saveData() {
         if (inventoryData.cierres) {
             inventoryData.cierres.forEach((cierre, index) => {
                 dataToSave.cierres[cierre.id] = cierre;
+            });
+        }
+        
+        if (inventoryData.albaranes) {
+            inventoryData.albaranes.forEach((albaran, index) => {
+                dataToSave.albaranes[albaran.id] = albaran;
             });
         }
         
@@ -605,6 +726,7 @@ function loadData() {
                     inventoryData.items = data.items ? Object.values(data.items) : [];
                     inventoryData.reservations = data.reservations ? Object.values(data.reservations) : [];
                     inventoryData.cierres = data.cierres ? Object.values(data.cierres) : [];
+                    inventoryData.albaranes = data.albaranes ? Object.values(data.albaranes) : [];
                     
                     console.log('📦 Loaded from Firebase:', inventoryData.families.length, 'families,', inventoryData.items.length, 'items');
                     
@@ -731,7 +853,7 @@ function loadFromLocalStorageSync() {
         }
     } catch (error) {
         console.error('❌ Error loading from localStorage:', error);
-        inventoryData = { families: [], items: [], reservations: [], cierres: [] };
+        inventoryData = { families: [], items: [], reservations: [], cierres: [], albaranes: [] };
         return false;
     }
 }
@@ -767,7 +889,8 @@ function initializeDefaultData() {
         ],
         items: [],
         reservations: [],
-        cierres: []
+        cierres: [],
+        albaranes: []
     };
 }
 
@@ -1185,6 +1308,9 @@ function openDeleteModal(type, id) {
     } else if (type === 'reservation') {
         const reservation = inventoryData.reservations.find(r => r.id === id);
         if (deleteMessage) deleteMessage.innerHTML = `Are you sure you want to delete the reservation for <strong>${escapeHtml(reservation.name)}</strong> on ${formatDate(reservation.date)}?`;
+    } else if (type === 'albaran') {
+        const albaran = inventoryData.albaranes.find(a => a.id === id);
+        if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmAlbaran')}<br><br><strong>${escapeHtml(albaran.company)}</strong> - ${escapeHtml(albaran.number)} (${formatDate(albaran.date)})`;
     } else {
         const item = inventoryData.items.find(i => i.id === id);
         if (deleteMessage) deleteMessage.innerHTML = `${t('deleteConfirmFamily')} <strong>${escapeHtml(item.name)}</strong>?`;
@@ -1307,6 +1433,9 @@ function confirmDelete() {
     } else if (deleteTarget.type === 'reservation') {
         inventoryData.reservations = inventoryData.reservations.filter(r => r.id !== deleteTarget.id);
         renderReservations();
+    } else if (deleteTarget.type === 'albaran') {
+        inventoryData.albaranes = inventoryData.albaranes.filter(a => a.id !== deleteTarget.id);
+        renderAlbaranes();
     } else {
         inventoryData.items = inventoryData.items.filter(i => i.id !== deleteTarget.id);
         renderFamilies();
@@ -1633,6 +1762,10 @@ function switchTab(tabName) {
         renderCierres();
         if (cierreDateInput) cierreDateInput.value = new Date().toISOString().split('T')[0];
         calculateCierre();
+    } else if (tabName === 'albaranes') {
+        const albaranesSection = document.getElementById('albaranesSection');
+        if (albaranesSection) albaranesSection.classList.add('active');
+        renderAlbaranes();
     }
 }
 
@@ -1794,6 +1927,648 @@ function saveReservation() {
     renderReservations();
 }
 
+// ===== Albaranes Functions =====
+function getFilteredAlbaranes() {
+    if (!inventoryData.albaranes || inventoryData.albaranes.length === 0) {
+        return [];
+    }
+    
+    let filtered = [...inventoryData.albaranes];
+    
+    // Apply date range filter
+    if (albaranFromDate && albaranFromDate.value) {
+        const fromDate = new Date(albaranFromDate.value);
+        fromDate.setHours(0, 0, 0, 0);
+        filtered = filtered.filter(albaran => {
+            const albaranDate = new Date(albaran.date);
+            albaranDate.setHours(0, 0, 0, 0);
+            return albaranDate >= fromDate;
+        });
+    }
+    
+    if (albaranToDate && albaranToDate.value) {
+        const toDate = new Date(albaranToDate.value);
+        toDate.setHours(23, 59, 59, 999);
+        filtered = filtered.filter(albaran => {
+            const albaranDate = new Date(albaran.date);
+            albaranDate.setHours(0, 0, 0, 0);
+            return albaranDate <= toDate;
+        });
+    }
+    
+    return filtered;
+}
+
+function getDateKey(date, period) {
+    const d = new Date(date);
+    
+    switch(period) {
+        case 'day':
+            return d.toISOString().split('T')[0]; // YYYY-MM-DD
+        case 'week':
+            const weekStart = new Date(d);
+            const day = d.getDay();
+            const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Start of week (Monday)
+            weekStart.setDate(diff);
+            weekStart.setHours(0, 0, 0, 0);
+            return weekStart.toISOString().split('T')[0];
+        case 'month':
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+        case 'year':
+            return String(d.getFullYear()); // YYYY
+        case 'total':
+        default:
+            return 'total';
+    }
+}
+
+function formatDateKey(key, period) {
+    if (period === 'total') return t('total');
+    if (period === 'year') return key;
+    if (period === 'month') {
+        const [year, month] = key.split('-');
+        const monthNames = currentLang === 'es' 
+            ? ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+            : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${monthNames[parseInt(month) - 1]} ${year}`;
+    }
+    if (period === 'week') {
+        const date = new Date(key);
+        const weekEnd = new Date(date);
+        weekEnd.setDate(date.getDate() + 6);
+        const startStr = formatDate(key);
+        const endStr = formatDate(weekEnd.toISOString().split('T')[0]);
+        return `${startStr} - ${endStr}`;
+    }
+    if (period === 'day') {
+        return formatDate(key);
+    }
+    return key;
+}
+
+function aggregateSpendingByPeriod(albaranes, period) {
+    const aggregated = {};
+    
+    albaranes.forEach(albaran => {
+        const key = getDateKey(albaran.date, period);
+        if (!aggregated[key]) {
+            aggregated[key] = {
+                key,
+                amount: 0,
+                count: 0
+            };
+        }
+        aggregated[key].amount += parseFloat(albaran.amount) || 0;
+        aggregated[key].count += 1;
+    });
+    
+    // Convert to array and sort
+    const sorted = Object.values(aggregated);
+    
+    if (period === 'total') {
+        return sorted; // Single entry
+    }
+    
+    // Sort by date key
+    sorted.sort((a, b) => {
+        if (period === 'year') return a.key.localeCompare(b.key);
+        if (period === 'month') return a.key.localeCompare(b.key);
+        if (period === 'week' || period === 'day') {
+            return new Date(a.key) - new Date(b.key);
+        }
+        return 0;
+    });
+    
+    return sorted;
+}
+
+function renderSpendingTimeChart() {
+    if (!spendingTimeChart || !spendingTimeChartContainer) {
+        console.log('Spending time chart elements not found');
+        return;
+    }
+    
+    const filteredAlbaranes = getFilteredAlbaranes();
+    
+    if (filteredAlbaranes.length === 0) {
+        spendingTimeChartContainer.style.display = 'none';
+        return;
+    }
+    
+    spendingTimeChartContainer.style.display = 'block';
+    
+    const aggregated = aggregateSpendingByPeriod(filteredAlbaranes, currentPeriod);
+    
+    if (aggregated.length === 0) {
+        spendingTimeChart.innerHTML = `<div class="chart-no-data">${t('noSpendingData')}</div>`;
+        return;
+    }
+    
+    const maxValue = Math.max(...aggregated.map(a => a.amount));
+    
+    spendingTimeChart.innerHTML = aggregated.map(data => {
+        const percentage = maxValue > 0 ? (data.amount / maxValue) * 100 : 0;
+        const label = formatDateKey(data.key, currentPeriod);
+        return `
+            <div class="chart-bar-container">
+                <div class="chart-label">
+                    <span>${escapeHtml(label)}</span>
+                    <span class="chart-label-count">(${data.count} ${t('albaranesCount')})</span>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar" style="width: ${percentage}%;">
+                        <span class="chart-bar-value">${formatCurrency(data.amount)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderCompanySpendingChart() {
+    const chartElement = document.getElementById('companyChart');
+    const chartContainer = document.getElementById('companyChartContainer');
+    
+    if (!chartElement || !chartContainer) {
+        console.log('Company chart elements not found');
+        return;
+    }
+    
+    const filteredAlbaranes = getFilteredAlbaranes();
+    
+    if (filteredAlbaranes.length === 0) {
+        chartContainer.style.display = 'none';
+        return;
+    }
+    
+    // Group albaranes by company
+    const companyData = {};
+    
+    filteredAlbaranes.forEach(albaran => {
+        const companyName = albaran.company.trim();
+        if (!companyData[companyName]) {
+            companyData[companyName] = {
+                name: companyName,
+                totalAmount: 0,
+                count: 0
+            };
+        }
+        companyData[companyName].totalAmount += parseFloat(albaran.amount) || 0;
+        companyData[companyName].count += 1;
+    });
+    
+    // Convert to array and sort by total amount (descending)
+    const sortedCompanies = Object.values(companyData)
+        .sort((a, b) => b.totalAmount - a.totalAmount);
+    
+    // Always show container
+    chartContainer.style.display = 'block';
+    
+    // Render chart
+    if (sortedCompanies.length === 0) {
+        chartElement.innerHTML = `<div class="chart-no-data">${t('noCompanyData')}</div>`;
+        return;
+    }
+    
+    const maxValue = sortedCompanies[0].totalAmount;
+    
+    chartElement.innerHTML = sortedCompanies.map(company => {
+        const percentage = maxValue > 0 ? (company.totalAmount / maxValue) * 100 : 0;
+        return `
+            <div class="chart-bar-container">
+                <div class="chart-label">
+                    <span class="chart-label-icon">🏢</span>
+                    <span>${escapeHtml(company.name)}</span>
+                    <span class="chart-label-count">(${company.count} ${t('albaranesCount')})</span>
+                </div>
+                <div class="chart-bar-wrapper">
+                    <div class="chart-bar" style="width: ${percentage}%;">
+                        <span class="chart-bar-value">${formatCurrency(company.totalAmount)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderAlbaranes() {
+    if (!albaranesGrid || !albaranesEmpty) return;
+    
+    const filteredAlbaranes = getFilteredAlbaranes();
+    
+    // Render charts first
+    renderSpendingTimeChart();
+    renderCompanySpendingChart();
+    
+    if (filteredAlbaranes.length === 0) {
+        albaranesGrid.innerHTML = '';
+        albaranesEmpty.classList.add('visible');
+        if (albaranesCount) albaranesCount.textContent = `0 ${t('albaranes')}`;
+        return;
+    }
+    
+    albaranesEmpty.classList.remove('visible');
+    
+    // Group albaranes by company
+    const companyGroups = {};
+    
+    filteredAlbaranes.forEach(albaran => {
+        const companyName = albaran.company.trim();
+        if (!companyGroups[companyName]) {
+            companyGroups[companyName] = [];
+        }
+        companyGroups[companyName].push(albaran);
+    });
+    
+    // Sort companies by total spending (descending)
+    const sortedCompanies = Object.entries(companyGroups)
+        .map(([companyName, albaranes]) => {
+            const totalAmount = albaranes.reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+            return { companyName, albaranes, totalAmount };
+        })
+        .sort((a, b) => b.totalAmount - a.totalAmount);
+    
+    albaranesGrid.innerHTML = '';
+    
+    // Render grouped by company
+    sortedCompanies.forEach(({ companyName, albaranes, totalAmount }) => {
+        // Company header
+        const companyHeader = document.createElement('div');
+        companyHeader.className = 'company-group-header';
+        companyHeader.innerHTML = `
+            <div class="company-group-title">
+                <span class="company-icon">🏢</span>
+                <span class="company-name">${escapeHtml(companyName)}</span>
+            </div>
+            <div class="company-group-summary">
+                <span class="company-total">${t('totalSpent')}: ${formatCurrency(totalAmount)}</span>
+                <span class="company-count">${albaranes.length} ${t('albaranesCount')}</span>
+            </div>
+        `;
+        albaranesGrid.appendChild(companyHeader);
+        
+        // Sort albaranes by date (newest first) within each company
+        const sortedCompanyAlbaranes = [...albaranes].sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateB - dateA;
+        });
+        
+        // Render albaranes for this company
+        sortedCompanyAlbaranes.forEach((albaran) => {
+            const card = document.createElement('div');
+            card.className = 'albaran-card';
+            
+            card.innerHTML = `
+                <div class="albaran-header">
+                    <div class="albaran-number">📄 ${escapeHtml(albaran.number)}</div>
+                </div>
+                <div class="albaran-details">
+                    <div class="albaran-date">📅 ${formatDate(albaran.date)}</div>
+                    <div class="albaran-amount">💰 ${formatCurrency(albaran.amount)}</div>
+                </div>
+                ${albaran.notes ? `<div class="albaran-notes">${escapeHtml(albaran.notes)}</div>` : ''}
+                <div class="albaran-actions">
+                    <button class="action-btn edit" data-id="${albaran.id}">✏️</button>
+                    <button class="action-btn delete" data-id="${albaran.id}">🗑️</button>
+                </div>
+            `;
+            
+            albaranesGrid.appendChild(card);
+        });
+    });
+    
+    if (albaranesCount) {
+        const count = filteredAlbaranes.length;
+        const totalCount = inventoryData.albaranes ? inventoryData.albaranes.length : 0;
+        if (count === totalCount) {
+            albaranesCount.textContent = `${count} ${t('albaranes')}`;
+        } else {
+            albaranesCount.textContent = `${count} / ${totalCount} ${t('albaranes')}`;
+        }
+    }
+    
+    // Add event listeners
+    document.querySelectorAll('.albaran-card .action-btn.edit').forEach(btn => {
+        btn.addEventListener('click', () => openEditAlbaranModal(btn.dataset.id));
+    });
+    
+    document.querySelectorAll('.albaran-card .action-btn.delete').forEach(btn => {
+        btn.addEventListener('click', () => openDeleteModal('albaran', btn.dataset.id));
+    });
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat(currentLang === 'es' ? 'es-ES' : 'en-US', {
+        style: 'currency',
+        currency: 'EUR'
+    }).format(amount);
+}
+
+function openAddAlbaranModal() {
+    editingAlbaranId = null;
+    if (albaranModalTitle) albaranModalTitle.textContent = t('addAlbaran');
+    if (albaranForm) albaranForm.reset();
+    
+    // Set default date to today
+    if (albaranDateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        albaranDateInput.value = today;
+    }
+    
+    openModal(albaranModal);
+    if (albaranCompanyInput) albaranCompanyInput.focus();
+}
+
+function openEditAlbaranModal(albaranId) {
+    editingAlbaranId = albaranId;
+    const albaran = inventoryData.albaranes.find(a => a.id === albaranId);
+    if (!albaran) return;
+    
+    if (albaranModalTitle) albaranModalTitle.textContent = t('editAlbaran');
+    if (albaranCompanyInput) albaranCompanyInput.value = albaran.company;
+    if (albaranNumberInput) albaranNumberInput.value = albaran.number;
+    if (albaranDateInput) albaranDateInput.value = albaran.date;
+    if (albaranAmountInput) albaranAmountInput.value = albaran.amount;
+    if (albaranNotesInput) albaranNotesInput.value = albaran.notes || '';
+    
+    openModal(albaranModal);
+    if (albaranCompanyInput) albaranCompanyInput.focus();
+}
+
+function saveAlbaran() {
+    const company = albaranCompanyInput ? albaranCompanyInput.value.trim() : '';
+    const number = albaranNumberInput ? albaranNumberInput.value.trim() : '';
+    const date = albaranDateInput ? albaranDateInput.value : '';
+    const amount = albaranAmountInput ? parseFloat(albaranAmountInput.value) : 0;
+    const notes = albaranNotesInput ? albaranNotesInput.value.trim() : '';
+    
+    if (!company || !number || !date || amount < 0) {
+        alert(t('fillAllFields'));
+        return;
+    }
+    
+    if (!isFinite(amount) || amount < 0) {
+        alert(t('invalidNumber'));
+        return;
+    }
+    
+    if (!inventoryData.albaranes) inventoryData.albaranes = [];
+    
+    if (editingAlbaranId) {
+        const albaran = inventoryData.albaranes.find(a => a.id === editingAlbaranId);
+        if (albaran) {
+            albaran.company = company;
+            albaran.number = number;
+            albaran.date = date;
+            albaran.amount = amount;
+            albaran.notes = notes;
+        }
+    } else {
+        inventoryData.albaranes.push({
+            id: generateId(),
+            company,
+            number,
+            date,
+            amount,
+            notes
+        });
+    }
+    
+    saveData();
+    closeModal(albaranModal);
+    renderAlbaranes();
+}
+
+// ===== Scanner Functions =====
+function openScannerModal() {
+    if (!scannerModal) return;
+    
+    openModal(scannerModal);
+    startScanner();
+}
+
+function closeScannerModalFunc() {
+    stopScanner();
+    closeModal(scannerModal);
+}
+
+function startScanner() {
+    if (!scannerVideo || !scannerCanvas) return;
+    
+    // Check if ZXing is available
+    if (typeof ZXing === 'undefined' || !ZXing.BrowserMultiFormatReader) {
+        if (scannerStatus) scannerStatus.textContent = t('scanError') + ' (Library not loaded)';
+        alert('Barcode scanning library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    // Initialize code reader
+    try {
+        codeReader = new ZXing.BrowserMultiFormatReader();
+    } catch (e) {
+        console.error('Error initializing ZXing:', e);
+        if (scannerStatus) scannerStatus.textContent = t('scanError');
+        return;
+    }
+    
+    // Request camera access
+    navigator.mediaDevices.getUserMedia({ 
+        video: { 
+            facingMode: 'environment', // Use back camera on mobile
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+        } 
+    })
+    .then(stream => {
+        scannerStream = stream;
+        scannerVideo.srcObject = stream;
+        scannerVideo.play();
+        
+        if (scannerStatus) scannerStatus.textContent = t('scannerReady');
+        
+        // Start scanning
+        scanForBarcode();
+    })
+    .catch(error => {
+        console.error('Camera access error:', error);
+        if (scannerStatus) scannerStatus.textContent = t('noCamera');
+        alert(t('noCamera'));
+    });
+}
+
+function scanForBarcode() {
+    if (!scannerVideo || !scannerCanvas || !codeReader) return;
+    
+    const width = scannerVideo.videoWidth;
+    const height = scannerVideo.videoHeight;
+    
+    if (width === 0 || height === 0) {
+        // Video not ready yet, try again
+        setTimeout(scanForBarcode, 100);
+        return;
+    }
+    
+    scannerCanvas.width = width;
+    scannerCanvas.height = height;
+    
+    const context = scannerCanvas.getContext('2d');
+    
+    // Draw current frame to canvas
+    context.drawImage(scannerVideo, 0, 0, width, height);
+    
+    // Try to decode barcode using ZXing
+    try {
+        const imageData = context.getImageData(0, 0, width, height);
+        
+        // Use ZXing's decodeFromImageData method
+        codeReader.decodeFromImageData(imageData)
+            .then(result => {
+                if (result && result.getText) {
+                    const scannedText = result.getText();
+                    console.log('Scanned:', scannedText);
+                    
+                    // Stop scanning
+                    stopScanner();
+                    
+                    // Parse and fill form
+                    parseScannedData(scannedText);
+                } else {
+                    // Continue scanning
+                    requestAnimationFrame(scanForBarcode);
+                }
+            })
+            .catch(() => {
+                // No barcode found, continue scanning
+                requestAnimationFrame(scanForBarcode);
+            });
+    } catch (e) {
+        // Error, continue scanning
+        requestAnimationFrame(scanForBarcode);
+    }
+}
+
+function parseScannedData(data) {
+    if (!data) return;
+    
+    if (scannerStatus) scannerStatus.textContent = t('parsingData');
+    
+    try {
+        // Try to parse as JSON first
+        let parsed = null;
+        try {
+            parsed = JSON.parse(data);
+        } catch (e) {
+            // Not JSON, try other formats
+        }
+        
+        if (parsed && typeof parsed === 'object') {
+            // JSON format: { company, number, date, amount, notes }
+            if (albaranCompanyInput && parsed.company) albaranCompanyInput.value = parsed.company;
+            if (albaranNumberInput && parsed.number) albaranNumberInput.value = parsed.number;
+            if (albaranDateInput && parsed.date) albaranDateInput.value = parsed.date;
+            if (albaranAmountInput && parsed.amount) albaranAmountInput.value = parsed.amount;
+            if (albaranNotesInput && parsed.notes) albaranNotesInput.value = parsed.notes;
+        } else {
+            // Try to parse structured text formats
+            // Format 1: "COMPANY|NUMBER|DATE|AMOUNT|NOTES"
+            const parts = data.split('|');
+            if (parts.length >= 4) {
+                if (albaranCompanyInput) albaranCompanyInput.value = parts[0].trim();
+                if (albaranNumberInput) albaranNumberInput.value = parts[1].trim();
+                if (albaranDateInput) {
+                    // Try to parse date
+                    const dateStr = parts[2].trim();
+                    const date = parseDateString(dateStr);
+                    if (date) albaranDateInput.value = date;
+                }
+                if (albaranAmountInput) {
+                    const amount = parseFloat(parts[3].trim());
+                    if (!isNaN(amount)) albaranAmountInput.value = amount;
+                }
+                if (albaranNotesInput && parts[4]) albaranNotesInput.value = parts[4].trim();
+            } else {
+                // Format 2: Just albaran number, fill only that
+                if (albaranNumberInput) albaranNumberInput.value = data.trim();
+            }
+        }
+        
+        // Set default date if not provided
+        if (albaranDateInput && !albaranDateInput.value) {
+            const today = new Date().toISOString().split('T')[0];
+            albaranDateInput.value = today;
+        }
+        
+        // Close scanner and open albaran modal
+        closeScannerModalFunc();
+        openAddAlbaranModal();
+        
+        if (scannerStatus) scannerStatus.textContent = t('scanSuccess');
+        
+    } catch (error) {
+        console.error('Error parsing scanned data:', error);
+        if (scannerStatus) scannerStatus.textContent = t('scanError');
+    }
+}
+
+function parseDateString(dateStr) {
+    // Try various date formats
+    const formats = [
+        /^(\d{4})-(\d{2})-(\d{2})$/, // YYYY-MM-DD
+        /^(\d{2})\/(\d{2})\/(\d{4})$/, // MM/DD/YYYY
+        /^(\d{2})\/(\d{2})\/(\d{2})$/, // MM/DD/YY
+        /^(\d{2})-(\d{2})-(\d{4})$/, // MM-DD-YYYY
+    ];
+    
+    for (const format of formats) {
+        const match = dateStr.match(format);
+        if (match) {
+            if (format === formats[0]) {
+                // YYYY-MM-DD
+                return dateStr;
+            } else if (format === formats[1] || format === formats[3]) {
+                // MM/DD/YYYY or MM-DD-YYYY
+                const month = match[1];
+                const day = match[2];
+                const year = match[3];
+                return `${year}-${month}-${day}`;
+            } else if (format === formats[2]) {
+                // MM/DD/YY
+                const month = match[1];
+                const day = match[2];
+                const year = '20' + match[3];
+                return `${year}-${month}-${day}`;
+            }
+        }
+    }
+    
+    // Try to parse as Date object
+    const date = new Date(dateStr);
+    if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+    }
+    
+    return null;
+}
+
+function stopScanner() {
+    // Stop video stream
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+    }
+    
+    // Clear video source
+    if (scannerVideo) {
+        scannerVideo.srcObject = null;
+    }
+    
+    // Reset code reader
+    codeReader = null;
+    
+    if (scannerStatus) scannerStatus.textContent = t('scannerReady');
+}
+
 // ===== Helper Functions =====
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -1833,20 +2608,50 @@ function setupEventListeners() {
     if (cancelReservationBtn) cancelReservationBtn.addEventListener('click', () => closeModal(reservationModal));
     if (reservationForm) reservationForm.addEventListener('submit', (e) => { e.preventDefault(); saveReservation(); });
 
+    // Albaranes events
+    if (addAlbaranBtn) addAlbaranBtn.addEventListener('click', openAddAlbaranModal);
+    if (closeAlbaranModal) closeAlbaranModal.addEventListener('click', () => closeModal(albaranModal));
+    if (cancelAlbaranBtn) cancelAlbaranBtn.addEventListener('click', () => closeModal(albaranModal));
+    if (albaranForm) albaranForm.addEventListener('submit', (e) => { e.preventDefault(); saveAlbaran(); });
+    
+    // Scanner events
+    if (scanAlbaranBtn) scanAlbaranBtn.addEventListener('click', openScannerModal);
+    if (closeScannerModal) closeScannerModal.addEventListener('click', closeScannerModalFunc);
+    if (stopScannerBtn) stopScannerBtn.addEventListener('click', closeScannerModalFunc);
+    
+    // Date filter events
+    if (albaranFromDate) albaranFromDate.addEventListener('change', () => renderAlbaranes());
+    if (albaranToDate) albaranToDate.addEventListener('change', () => renderAlbaranes());
+    if (resetDateFilterBtn) resetDateFilterBtn.addEventListener('click', () => {
+        if (albaranFromDate) albaranFromDate.value = '';
+        if (albaranToDate) albaranToDate.value = '';
+        renderAlbaranes();
+    });
+    
+    // Time period filter events
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentPeriod = btn.dataset.period;
+            renderAlbaranes();
+        });
+    });
+
     // Delete modal
     if (closeDeleteModal) closeDeleteModal.addEventListener('click', () => closeModal(deleteModal));
     if (cancelDeleteBtn) cancelDeleteBtn.addEventListener('click', () => closeModal(deleteModal));
     if (confirmDeleteBtn) confirmDeleteBtn.addEventListener('click', confirmDelete);
 
     // Close modals on overlay click
-    [familyModal, itemModal, deleteModal, reservationModal].forEach(modal => {
+    [familyModal, itemModal, deleteModal, reservationModal, albaranModal].forEach(modal => {
         if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(modal); });
     });
 
     // Close modals on Escape key
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
-            [familyModal, itemModal, deleteModal, reservationModal].forEach(modal => {
+            [familyModal, itemModal, deleteModal, reservationModal, albaranModal].forEach(modal => {
                 if (modal && modal.classList.contains('active')) closeModal(modal);
             });
         }
